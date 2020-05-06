@@ -16,6 +16,6 @@ def postgres_query(query: str,
             data = cur.fetchall()
 
     logger.info('Time taken: {}s'.format((datetime.datetime.now()-start).seconds))
-    logger.info('Data size: {}mb'.format(sys.getsizeof(data)))
+    logger.info('Data size: {}mb'.format(sys.getsizeof(data) / 1000000))
 
     return data
