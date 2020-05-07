@@ -1,7 +1,7 @@
 import psycopg2
 import datetime
 from typing import List
-from core.utils.logging import logger
+from core.imports.vanilla import logger
 import sys
 
 

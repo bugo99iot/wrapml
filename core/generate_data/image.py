@@ -1,8 +1,8 @@
-import numpy as np
-from core.utils.logging import logger
-from typing import Tuple
+from core.imports.science import np
+from core.imports.vanilla import logger, Tuple
 from core.generate_data.utils.utils import get_n_names
 from core.utils.utils import DataProcessor
+from core.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
 
 
 class ImageGenerator(DataProcessor):
@@ -20,8 +20,8 @@ class ImageGenerator(DataProcessor):
                             image_side: int,
                             rescale: bool = False,
                             encode_labels: bool = True,
-                            test_size: float = 0.3,
-                            random_state: int = 0,
+                            test_size: float = DEFAULT_TEST_SIZE,
+                            random_state: int = DEFAULT_RANDOM_STATE,
                             stratify: bool = True):
         """
         Generate dummy data, squared images with 1 pixel of value 1.0 and all other pixels of value 0.0

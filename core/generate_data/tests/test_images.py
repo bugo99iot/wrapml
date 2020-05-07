@@ -1,5 +1,5 @@
 from core.imports.testing import TestCase
-import numpy as np
+from core.imports.science import np
 from core.generate_data.image import ImageGenerator
 
 
@@ -7,7 +7,7 @@ class TestImageGenerator(TestCase):
 
     def test_basic_functionality(self):
         ig = ImageGenerator
-        ig.gen_m_x_m_grayscale(n_shots=4, image_side=2, encode_labels=False)
+        ig.gen_m_x_m_grayscale(n_shots=4, image_side=2, encode_labels=False, test_size=0.33)
         x_train, x_test, y_train, y_test = ig.training_tuple()
         x, y = ig.training_xy()
 

@@ -2,6 +2,7 @@ from core.imports.science import *
 from core.imports.vanilla import *
 from core.imports.learn import *
 from core.imports.learn import train_test_split
+from core.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
 
 
 class DataProcessor:
@@ -12,12 +13,12 @@ class DataProcessor:
     def train_test_split(cls,
                          x: np.ndarray,
                          y: np.ndarray,
-                         test_size: float = 0.3,
+                         test_size: float = DEFAULT_TEST_SIZE,
                          stratify: bool = True,
-                         hard_stratify: bool = True,
-                         random_state: int = 0) -> Tuple:
+                         hard_stratify: bool = False,
+                         random_state: int = DEFAULT_RANDOM_STATE) -> Tuple:
 
-        # todo: hard stratify
+        # todo: add hard stratify option
 
         if stratify:
             stratify_item = y
