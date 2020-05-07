@@ -1,5 +1,5 @@
 from core.imports.testing import *
-from core.learn.classification import TrainClassificationModel
+from core.learn.supervised.classification import TrainClassificationModel
 from core.generate_data.image import ImageGenerator
 
 
@@ -22,7 +22,7 @@ class TestTrainClassificationModel(TestCase):
 
     def test_random_forests(self):
 
-        self.tm.train_with_random_forests(do_grid_search=True)
+        self.tm.train_with_random_forests(do_grid_search=False)
         score = self.tm.score
         accuracy = round(score['test']['accuracy_score_mean'], 2)
         self.assertIsNotNone(accuracy)

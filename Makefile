@@ -22,7 +22,7 @@ help:
 
 .PHONY: pip-freeze
 pip-freeze: ## Freeze requirements
-	pip freeze > requirements.txt
+	. ml_venv/bin/activate && pip freeze > requirements.txt
 
 .PHONY: test
 test: ## Run tests

@@ -8,6 +8,7 @@ import sys
 def postgres_query(query: str,
                    database_url: str) -> List:
 
+    logger.info('Making Postgres query.')
     start = datetime.datetime.now()
 
     with psycopg2.connect(database_url) as conn:
@@ -15,7 +16,7 @@ def postgres_query(query: str,
             cur.execute(query)
             data = cur.fetchall()
 
-    logger.info('Time taken: {}s'.format((datetime.datetime.now()-start).seconds))
-    logger.info('Data size: {}mb'.format(sys.getsizeof(data) / 1000000))
+    logger.info('Time taken for Postgres query: {}s'.format((datetime.datetime.now()-start).seconds))
+    logger.info('Data size parsed from Postgres query: {}mb'.format(sys.getsizeof(data) / 1000000))
 
     return data

@@ -19,7 +19,7 @@ class ImageGenerator(DataProcessor):
                             image_side: int,
                             rescale: bool = False,
                             encode_labels: bool = True,
-                            test_size: float = 0.33,
+                            test_size: float = 0.3,
                             random_state: int = 0,
                             stratify: bool = True):
         """
