@@ -15,7 +15,6 @@ endif
 help:
 	@awk 'BEGIN {FS = ":.*?## "} /^[0-9a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-
 ########################################################################################################################
 # DEV TOOLS
 ########################################################################################################################
@@ -27,7 +26,7 @@ pip-freeze: ## Freeze requirements
 .PHONY: test
 test: ## Run tests
 	make clear-pytest-cache
-	. venv/bin/activate && cd core && python -m pytest -s -vv
+	. venv/bin/activate && cd src && python -m pytest -s -vv
 	make clear-pytest-cache
 
 .PHONY: clear-pytest-cache
