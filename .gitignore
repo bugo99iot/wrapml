@@ -10,4 +10,5 @@
 !settings.py
 !setup.py
 
+# But ignore also
 **/__pycache__
