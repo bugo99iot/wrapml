@@ -22,12 +22,12 @@ help:
 
 .PHONY: pip-freeze
 pip-freeze: ## Freeze requirements
-	. ml_venv/bin/activate && pip freeze > requirements.txt
+	. venv/bin/activate && pip freeze > requirements.txt
 
 .PHONY: test
 test: ## Run tests
 	make clear-pytest-cache
-	. ml_venv/bin/activate && cd core && python -m pytest -s -vv
+	. venv/bin/activate && cd core && python -m pytest -s -vv
 	make clear-pytest-cache
 
 .PHONY: clear-pytest-cache

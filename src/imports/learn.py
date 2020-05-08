@@ -1,3 +1,7 @@
+from src.imports.vanilla import logger
+
+# ML
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.neighbors import KNeighborsClassifier
@@ -9,6 +13,10 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
-from src.utils.logging import logger
 from xgboost import XGBClassifier
 
+# Tensorflow
+
+import tensorflow as tf
+
+logger.debug("TensorFlow ready. Version:", tf.__version__)
