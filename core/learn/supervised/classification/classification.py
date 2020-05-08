@@ -1,7 +1,8 @@
 from core.imports.science import np
 from core.imports.vanilla import Dict
 from core.imports.learn import pickle, StratifiedShuffleSplit
-from core.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier
+from core.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
+    XGBClassifier
 from core.imports.learn import GridSearchCV
 from core.imports.learn import f1_score, accuracy_score, precision_score, recall_score, matthews_corrcoef, \
     cohen_kappa_score, roc_auc_score, zero_one_loss, make_scorer
@@ -157,9 +158,20 @@ class TrainClassificationModel:
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
                                do_grid_search=do_grid_search)
 
-    def train_with_xgboost(self):
-        # todo
-        return
+    def train_with_xgboost(self,
+                           do_grid_search: bool = None,
+                           grid_search_parameters: Dict = None,
+                           score_criteria_for_best_model_fit: str = None,
+                           **kwargs):
+        # https://xgboost.readthedocs.io/en/latest/python/python_api.html
+        # https://xgboost.readthedocs.io/en/latest/parameter.html
+
+        model = XGBClassifier(**kwargs, n_jobs=self.n_jobs, random_state=self.random_state)
+
+        self._train_with_model(model=model,
+                               grid_search_parameters=grid_search_parameters,
+                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                               do_grid_search=do_grid_search)
 
     def train_with_ada(self,
                        do_grid_search: bool = None,
@@ -329,7 +341,7 @@ class TrainClassificationModel:
                                 # 'roc_auc_score': make_scorer(roc_auc_score, average='macro', multi_class='ovo')
                                 }
 
-    def train_all(self, do_grid_search: bool = False):
+    def search_estimator(self, do_grid_search: bool = False):
 
         # todo: add custom scoring criteria?
 
@@ -345,6 +357,9 @@ class TrainClassificationModel:
         report[self.model_name] = self.report
 
         self.train_with_svc(do_grid_search=do_grid_search)
+        report[self.model_name] = self.report
+
+        self.train_with_xgboost(do_grid_search=do_grid_search)
         report[self.model_name] = self.report
 
         self.train_with_ada(do_grid_search=do_grid_search)

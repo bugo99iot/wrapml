@@ -47,7 +47,7 @@ class TestTrainClassificationModelWine(TestCase):
 
         tm.k_fold_cross_validation = 2
 
-        tm.train_all()
+        tm.search_estimator()
 
         self.assertEqual('RandomForestClassifier', tm.report['best_estimator']['best_estimator_name'])
 
@@ -65,7 +65,7 @@ class TestTrainClassificationModelIris(TestCase):
 
         tm.k_fold_cross_validation = 2
 
-        tm.train_all()
+        tm.search_estimator()
 
         self.assertEqual('SVC', tm.report['best_estimator']['best_estimator_name'])
 
@@ -81,6 +81,8 @@ class TestTrainClassificationModelDigits(TestCase):
 
         tm.k_fold_cross_validation = 2
 
-        tm.train_all()
+        tm.search_estimator(do_grid_search=True)
 
         self.assertEqual('SVC', tm.report['best_estimator']['best_estimator_name'])
+
+        pprint(tm.report)

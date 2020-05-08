@@ -1,4 +1,5 @@
-from core.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier
+from core.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
+    XGBClassifier
 
 DEFAULT_GRID_SEARCH_PARAMETERS = {type(RandomForestClassifier()).__name__: {'n_estimators': [50, 100, 200],
                                                                             'class_weight': ['balanced', None],
@@ -10,6 +11,8 @@ DEFAULT_GRID_SEARCH_PARAMETERS = {type(RandomForestClassifier()).__name__: {'n_e
                                   type(SVC()).__name__: {},
                                   type(MLPClassifier()).__name__: {'hidden_layer_sizes': [(100, 20,), (100,), (50, )],
                                                                    'max_iter': [200, 400]},
+                                  type(XGBClassifier()).__name__: {'booster': ['gbtree', 'dart'],
+                                                                   'max_depth': [2, 6, 10]},
 
                                   }
 DEFAULT_TEST_SIZE = 0.3

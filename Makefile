@@ -33,3 +33,9 @@ test: ## Run tests
 .PHONY: clear-pytest-cache
 clear-pytest-cache: ## Clear pytest cache
 	rm -r .pytest_cache || true
+
+.PHONY: install-xgboost-mac
+install-xgboost-mac: ## Install XGBoost on a mac
+	brew install gcc
+	brew info gcc
+	export CC=gcc-8; export CXX=g++-8; pip install xgboost
