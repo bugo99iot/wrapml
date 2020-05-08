@@ -9,3 +9,5 @@
 !Makefile
 !settings.py
 !setup.py
+
+**/__pycache__
