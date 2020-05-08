@@ -1,22 +1,23 @@
-from core.imports.science import np
-from core.imports.vanilla import Dict
-from core.imports.learn import pickle, StratifiedShuffleSplit
-from core.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
+from src.imports.science import np
+from src.imports.vanilla import Dict
+from src.imports.learn import pickle, StratifiedShuffleSplit
+from src.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
     XGBClassifier
-from core.imports.learn import GridSearchCV
-from core.imports.learn import f1_score, accuracy_score, precision_score, recall_score, matthews_corrcoef, \
+from src.imports.learn import GridSearchCV
+from src.imports.learn import f1_score, accuracy_score, precision_score, recall_score, matthews_corrcoef, \
     cohen_kappa_score, roc_auc_score, zero_one_loss, make_scorer
-from core.utils.logging import logger
-from core.constants import DEFAULT_GRID_SEARCH_PARAMETERS, CLASSIFICATION_TYPE_BINARY, CLASSIFICATION_TYPE_MULTICLASS
-from core.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
+from src.utils.logging import logger
+from src.constants import DEFAULT_GRID_SEARCH_PARAMETERS, CLASSIFICATION_TYPE_BINARY, CLASSIFICATION_TYPE_MULTICLASS
+from src.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
 
 
 # todo HIGH PRIO:
-#  - save report
+#  - save best model + path
+#  - print report, print small report, save report + path
+#  - add option print report
 #  - add score given min probability for classifier which provide probability
 #  - add models ranking to report
 #  - add: refit best model when search all
-# -  - rename train all -> search
 
 
 # todo MED PRIO:

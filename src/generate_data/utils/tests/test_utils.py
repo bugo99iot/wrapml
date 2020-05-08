@@ -1,6 +1,6 @@
-from core.imports.testing import *
-from core.imports.science import np
-from core.generate_data.utils.utils import get_n_names
+from src.imports.testing import *
+from src.imports.science import np
+from src.generate_data.utils.utils import get_n_names
 
 
 class TestImageGenerator(TestCase):

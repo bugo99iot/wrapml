@@ -1,6 +1,6 @@
-from core.imports.testing import TestCase
-from core.imports.science import np
-from core.generate_data.image import ImageGenerator
+from src.imports.testing import TestCase
+from src.imports.science import np
+from src.generate_data.image import ImageGenerator
 
 
 class TestImageGenerator(TestCase):

@@ -2,9 +2,10 @@
 /*
 
 # Except for
-!/core/
+!/src/
 !requirements.txt
 !.gitignore
 !README.md
 !Makefile
+!settings.py
 !setup.py

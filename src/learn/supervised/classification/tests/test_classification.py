@@ -1,7 +1,7 @@
-from core.imports.testing import *
-from core.imports.vanilla import pprint
-from core.learn.supervised.classification import TrainClassificationModel
-from core.generate_data.image import ImageGenerator
+from src.imports.testing import *
+from src.imports.vanilla import pprint
+from src.learn.supervised.classification import TrainClassificationModel
+from src.generate_data.image import ImageGenerator
 
 
 class TestTrainClassificationModelMxM(TestCase):
@@ -84,5 +84,3 @@ class TestTrainClassificationModelDigits(TestCase):
         tm.search_estimator(do_grid_search=True)
 
         self.assertEqual('SVC', tm.report['best_estimator']['best_estimator_name'])
-
-        pprint(tm.report)

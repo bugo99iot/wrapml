@@ -1,4 +1,4 @@
-from core.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
+from src.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
     XGBClassifier
 
 DEFAULT_GRID_SEARCH_PARAMETERS = {type(RandomForestClassifier()).__name__: {'n_estimators': [50, 100, 200],

@@ -1,8 +1,8 @@
-from core.imports.science import np
-from core.imports.vanilla import logger, Tuple
-from core.generate_data.utils.utils import get_n_names
-from core.utils.utils import DataProcessor
-from core.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
+from src.imports.science import np
+from src.imports.vanilla import logger, Tuple
+from src.generate_data.utils.utils import get_n_names
+from src.utils.utils import DataProcessor
+from src.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
 
 
 class ImageGenerator(DataProcessor):

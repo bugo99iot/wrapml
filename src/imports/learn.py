@@ -9,6 +9,6 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
-from core.utils.logging import logger
+from src.utils.logging import logger
 from xgboost import XGBClassifier
 

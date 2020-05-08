@@ -1,5 +1,5 @@
 import names as pynames
-from core.imports.vanilla import List
+from src.imports.vanilla import List
 import random
 
 

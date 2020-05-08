@@ -1,8 +1,8 @@
-from core.imports.science import *
-from core.imports.vanilla import *
-from core.imports.learn import *
-from core.imports.learn import train_test_split
-from core.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
+from src.imports.science import *
+from src.imports.vanilla import *
+from src.imports.learn import *
+from src.imports.learn import train_test_split
+from src.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
 
 
 class DataProcessor:
