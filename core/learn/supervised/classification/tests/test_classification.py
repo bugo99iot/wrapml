@@ -1,9 +1,10 @@
 from core.imports.testing import *
+from core.imports.vanilla import pprint
 from core.learn.supervised.classification import TrainClassificationModel
 from core.generate_data.image import ImageGenerator
 
 
-class TestTrainClassificationModel(TestCase):
+class TestTrainClassificationModelMxM(TestCase):
 
     ig = ImageGenerator
     ig.gen_m_x_m_grayscale(n_shots=5, image_side=15, encode_labels=False)
@@ -17,7 +18,7 @@ class TestTrainClassificationModel(TestCase):
 
         self.tm.train_with_knn()
         score = self.tm.score
-        accuracy = round(score['accuracy_score']['avg'], 2)
+        accuracy = round(score['test']['accuracy_score_mean'], 2)
         self.assertEqual(1.0, accuracy)
 
     def test_random_forests(self):
@@ -31,8 +32,55 @@ class TestTrainClassificationModel(TestCase):
 
         self.tm.train_with_ada(n_estimators=50, learning_rate=0.1)
         score = self.tm.score
-        accuracy = round(score['accuracy_score']['avg'], 2)
+        accuracy = round(score['test']['accuracy_score_mean'], 2)
         self.assertIsNotNone(accuracy)
 
-    def test_grid_search(self):
-        self.tm._grid_search_model()
+
+class TestTrainClassificationModelWine(TestCase):
+    from sklearn.datasets import load_wine
+
+    x, y = load_wine(return_X_y=True)
+
+    def test_wine(self):
+
+        tm = TrainClassificationModel(x=self.x, y=self.y)
+
+        tm.k_fold_cross_validation = 2
+
+        tm.train_all()
+
+        self.assertEqual('RandomForestClassifier', tm.report['best_estimator']['best_estimator_name'])
+
+
+class TestTrainClassificationModelIris(TestCase):
+    from sklearn.datasets import load_iris
+
+    x, y = load_iris(return_X_y=True)
+
+    print(x.shape)
+
+    def test_wine(self):
+
+        tm = TrainClassificationModel(x=self.x, y=self.y)
+
+        tm.k_fold_cross_validation = 2
+
+        tm.train_all()
+
+        self.assertEqual('SVC', tm.report['best_estimator']['best_estimator_name'])
+
+
+class TestTrainClassificationModelDigits(TestCase):
+    from sklearn.datasets import load_digits
+
+    x, y = load_digits(return_X_y=True)
+
+    def test_wine(self):
+
+        tm = TrainClassificationModel(x=self.x, y=self.y)
+
+        tm.k_fold_cross_validation = 2
+
+        tm.train_all()
+
+        self.assertEqual('SVC', tm.report['best_estimator']['best_estimator_name'])

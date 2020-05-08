@@ -1,5 +1,5 @@
 from core.imports.science import np
-from core.imports.vanilla import Dict, pprint
+from core.imports.vanilla import Dict
 from core.imports.learn import pickle, StratifiedShuffleSplit
 from core.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier
 from core.imports.learn import GridSearchCV
@@ -11,25 +11,27 @@ from core.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
 
 
 # todo HIGH PRIO:
-#  - add train all in series
 #  - save report
 #  - add score given min probability for classifier which provide probability
+#  - add models ranking to report
+#  - add: refit best model when search all
+# -  - rename train all -> search
 
 
 # todo MED PRIO:
 #  - linear and non linear SVC
-#  - add print plots (ROC curve, confusion matrix, overfit, underfit)
-#  - check works with vectors
+#  - add print plots (ROC curve, confusion matrix, overfit, underfit, plot to compare models)
 #  - check works with images without channels
 #  - fix labels encoding
 #  - class weight support
-#  - add CNN tensorflow and beyond
+#  - add CNN tensorflow and beyond + rescale image 255 / https://www.tensorflow.org/tutorials/images/classification
 
 # todo LOW PRIO
 #  - add OneVsRestClassifier
 #  - add multilabel support
 #  - add cohen k-score for inter-annotators agreement
 #  - dd automatic overfit / underfit detection
+#  - feature selection
 
 
 class TrainClassificationModel:
@@ -54,7 +56,7 @@ class TrainClassificationModel:
         self.score_average_method: str = 'weighted'
         self.do_grid_search: bool = False
         self.return_train_score: bool = True
-        self.scoring_methods: Dict = None
+        self.scoring_methods: Dict = {}
         self.score_criteria_for_best_model_fit = 'f1_score'
 
         # model
@@ -64,6 +66,9 @@ class TrainClassificationModel:
 
         self.best_parameters_from_grid_search: Dict = {}
         self.parameter_combinations_searched: int = None
+
+        # report
+        self.report: Dict = {}
 
         # data
         self.y_as_vector: np.ndarray = y
@@ -94,7 +99,7 @@ class TrainClassificationModel:
 
         x_shape = x.shape
 
-        if len(x_shape) == 1:
+        if len(x_shape) == 2:
             if x_shape[0] <= 10:
                 raise Exception('If passed as vector, x should be a numpy array with shape (n,), n >= 10')
             self.x_as_vector: np.ndarray = x
@@ -265,8 +270,9 @@ class TrainClassificationModel:
         logger.info('Training with {} done. Fit time: {}s.'.format(self.model_name,
                                                                    self.fit_time_total_s))
 
-    @property
-    def report(self):
+        self._calculate_report_for_model()
+
+    def _calculate_report_for_model(self):
 
         report = self.score
 
@@ -281,7 +287,7 @@ class TrainClassificationModel:
                   ]:
             report[i] = self.__getattribute__(i)
 
-        return report
+        self.report = report
 
     def predict(self, x: np.ndarray):
         return self.model.predict(x)
@@ -308,6 +314,7 @@ class TrainClassificationModel:
         self.best_model_parameters = {}
         self.best_parameters_from_grid_search = {}
         self.parameter_combinations_searched = None
+        self.report = {}
 
     def _init_scoring(self):
         # todo: change scoring technique depending wther probelm is binary or multiclass
@@ -322,8 +329,52 @@ class TrainClassificationModel:
                                 # 'roc_auc_score': make_scorer(roc_auc_score, average='macro', multi_class='ovo')
                                 }
 
-    def train_all(self):
-        pass
+    def train_all(self, do_grid_search: bool = False):
+
+        # todo: add custom scoring criteria?
+
+        report = {}
+
+        self.train_with_random_forests(do_grid_search=do_grid_search)
+        report[self.model_name] = self.report
+
+        self.train_with_knn(do_grid_search=do_grid_search)
+        report[self.model_name] = self.report
+
+        self.train_with_mlp(do_grid_search=do_grid_search)
+        report[self.model_name] = self.report
+
+        self.train_with_svc(do_grid_search=do_grid_search)
+        report[self.model_name] = self.report
+
+        self.train_with_ada(do_grid_search=do_grid_search)
+        report[self.model_name] = self.report
+
+        best_estimator_best_score = None
+        best_estimator_name = None
+        best_estimator_best_score_criteria = None
+        best_estimator_fit_time_k_folds_s = None
+        for k, v in report.items():
+
+            if best_estimator_best_score is None:
+                best_estimator_best_score = v['best_score']
+                best_estimator_best_score_criteria = v['best_score_criteria']
+                best_estimator_name = k
+                best_estimator_fit_time_k_folds_s = v['fit_time_best_model_k_folds_s']
+
+            elif v['best_score'] > best_estimator_best_score:
+                best_estimator_best_score = v['best_score']
+                best_estimator_best_score_criteria = v['best_score_criteria']
+                best_estimator_name = k
+                best_estimator_fit_time_k_folds_s = v['fit_time_best_model_k_folds_s']
+
+        report['best_estimator'] = {}
+        report['best_estimator']['best_estimator_name'] = best_estimator_name
+        report['best_estimator']['best_estimator_best_score'] = best_estimator_best_score
+        report['best_estimator']['best_estimator_best_score_criteria'] = best_estimator_best_score_criteria
+        report['best_estimator']['best_estimator_fit_time_k_folds_s'] = best_estimator_fit_time_k_folds_s
+
+        self.report = report
 
     def train_all_with_search(self):
         pass
