@@ -31,7 +31,14 @@ test: ## Run tests
 
 .PHONY: clear-pytest-cache
 clear-pytest-cache: ## Clear pytest cache
-	rm -r .pytest_cache || true
+	find . -path "*/*.pyc"  -delete
+	find . -path "*/*.pyo"  -delete
+	find . -type d -name  "__pycache__" -exec rm -r {} +
+	find . -path "*/__pycache__" -type d -exec rm -r {} ';'
+
+.PHONY: clear-pytest-git-history
+clear-pytest-git-history: ## Clear pytest git history
+	git rm --cached */__pycache__/* || true
 
 .PHONY: install-xgboost-mac
 install-xgboost-mac: ## Install XGBoost on a mac
