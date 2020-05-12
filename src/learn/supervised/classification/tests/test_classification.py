@@ -23,10 +23,11 @@ class TestTrainClassificationModelMxM(TestCase):
 
     def test_random_forests(self):
 
-        self.tm.train_with_random_forests(do_grid_search=False)
+        self.tm.train_with_random_forests(do_grid_search=True)
         score = self.tm.score
         accuracy = round(score['test']['accuracy_score_mean'], 2)
         self.assertIsNotNone(accuracy)
+        pprint(self.tm.report)
 
     def test_ada(self):
 

@@ -12,6 +12,7 @@ from src.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
 
 
 # todo HIGH PRIO:
+#  - add LSTM: # https://www.analyticsvidhya.com/blog/2019/01/introduction-time-series-classification/
 #  - save best model + path
 #  - print report, print small report, save report + path
 #  - add option print report
@@ -128,10 +129,10 @@ class TrainClassificationModel:
 
         model = KNeighborsClassifier(**kwargs, n_jobs=self.n_jobs)
 
-        self._train_with_model(model=model,
-                               grid_search_parameters=grid_search_parameters,
-                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+        self._train_model_with_keras(model=model,
+                                     grid_search_parameters=grid_search_parameters,
+                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                                     do_grid_search=do_grid_search)
 
     def train_with_random_forests(self,
                                   do_grid_search: bool = None,
@@ -141,10 +142,10 @@ class TrainClassificationModel:
 
         model = RandomForestClassifier(**kwargs, random_state=self.random_state, n_jobs=self.n_jobs)
 
-        self._train_with_model(model=model,
-                               grid_search_parameters=grid_search_parameters,
-                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+        self._train_model_with_keras(model=model,
+                                     grid_search_parameters=grid_search_parameters,
+                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                                     do_grid_search=do_grid_search)
 
     def train_with_mlp(self,
                        do_grid_search: bool = None,
@@ -154,10 +155,10 @@ class TrainClassificationModel:
 
         model = MLPClassifier(**kwargs, random_state=self.random_state, early_stopping=True)
 
-        self._train_with_model(model=model,
-                               grid_search_parameters=grid_search_parameters,
-                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+        self._train_model_with_keras(model=model,
+                                     grid_search_parameters=grid_search_parameters,
+                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                                     do_grid_search=do_grid_search)
 
     def train_with_xgboost(self,
                            do_grid_search: bool = None,
@@ -169,10 +170,10 @@ class TrainClassificationModel:
 
         model = XGBClassifier(**kwargs, n_jobs=self.n_jobs, random_state=self.random_state)
 
-        self._train_with_model(model=model,
-                               grid_search_parameters=grid_search_parameters,
-                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+        self._train_model_with_keras(model=model,
+                                     grid_search_parameters=grid_search_parameters,
+                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                                     do_grid_search=do_grid_search)
 
     def train_with_ada(self,
                        do_grid_search: bool = None,
@@ -182,10 +183,10 @@ class TrainClassificationModel:
 
         model = AdaBoostClassifier(**kwargs, random_state=self.random_state)
 
-        self._train_with_model(model=model,
-                               grid_search_parameters=grid_search_parameters,
-                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+        self._train_model_with_keras(model=model,
+                                     grid_search_parameters=grid_search_parameters,
+                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                                     do_grid_search=do_grid_search)
 
     def train_with_svc(self,
                        do_grid_search: bool = None,
@@ -195,17 +196,21 @@ class TrainClassificationModel:
 
         model = SVC(**kwargs, random_state=self.random_state)
 
-        self._train_with_model(model=model,
-                               grid_search_parameters=grid_search_parameters,
-                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+        self._train_model_with_keras(model=model,
+                                     grid_search_parameters=grid_search_parameters,
+                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                                     do_grid_search=do_grid_search)
 
-    def _train_with_model(self,
-                          model,
-                          do_grid_search: bool,
-                          grid_search_parameters: Dict,
-                          score_criteria_for_best_model_fit: str,
-                          ):
+    def train_with_lstm(self):
+        # todo
+        pass
+
+    def _train_model_with_keras(self,
+                                model,
+                                do_grid_search: bool,
+                                grid_search_parameters: Dict,
+                                score_criteria_for_best_model_fit: str,
+                                ):
         """
 
         :param model:

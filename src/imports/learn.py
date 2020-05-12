@@ -20,3 +20,6 @@ from xgboost import XGBClassifier
 import tensorflow as tf
 
 logger.debug("TensorFlow ready. Version:", tf.__version__)
+
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.models import Sequential

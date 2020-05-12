@@ -8,9 +8,10 @@ DEFAULT_GRID_SEARCH_PARAMETERS = {type(RandomForestClassifier()).__name__: {'n_e
                                                                             'max_features': ['auto', 'sqrt', None]},
                                   type(KNeighborsClassifier()).__name__: {'n_neighbors': [2, 3, 5]},
                                   type(AdaBoostClassifier()).__name__: {},
-                                  type(SVC()).__name__: {},
+                                  type(SVC()).__name__: {'kernel': ['rbf', 'linear', 'poly']},
                                   type(MLPClassifier()).__name__: {'hidden_layer_sizes': [(100, 20,), (100,), (50, )],
-                                                                   'max_iter': [200, 400]},
+                                                                   'max_iter': [200, 400],
+                                                                   'alpha': [0.0001, 0.0001, 0.001]},
                                   type(XGBClassifier()).__name__: {'booster': ['gbtree', 'dart'],
                                                                    'max_depth': [2, 6, 10]},
 
