@@ -68,18 +68,20 @@ def main():
     model = Sequential()
     model.add(LSTM(units=32, input_shape=(x.shape[1], x.shape[2])))
     model.add(Dropout(rate=0.5))
-    model.add(Dense(units=100, activation='relu'))
+    model.add(Dense(units=100, activation='softmax'))
     # last layr notes
     # softmax should be used with categorical crossentropy (multiclass)
-    # relu should be used with binary crossentropy (binary)
+    # sigmoid should be used with binary crossentropy (binary)
     # n neurons must be = n of classes with softmax
     # https://developers.google.com/machine-learning/crash-course/multi-class-neural-networks/softmax
-    model.add(Dense(y.shape[1], activation='softmax'))
+    model.add(Dense(y.shape[1], activation='sigmoid'))
+
+    # last layer can be Dense(1) if y is not onehotencoded and activation is sigmoid (binary cross)
 
     model.summary()
 
     model.compile(
-        loss='categorical_crossentropy',
+        loss='binary_crossentropy',
         optimizer='adam',
         metrics=['acc']
     )
