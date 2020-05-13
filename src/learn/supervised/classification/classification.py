@@ -82,13 +82,15 @@ class TrainClassificationModel:
         # check labels shape
         y_shape = y.shape
 
-        if len(y_shape) != 1:
-            raise Exception('y should be a numpy array with shape (n,)')
+        if len(y_shape) not in (1, 2):
+            raise Exception('y should be a numpy array with shape (n,) or (n, 1)')
+        if len(y_shape) == 1:
+            self.y_as_vector: np.ndarray = self.y_as_vector.reshape(y_shape[0], 1)
 
         if y_shape[0] <= 10:
             raise Exception('y should be a numpy array with shape (n,), n >= 10')
 
-        self.n_classes: int = len(set(self.y_as_vector))
+        self.n_classes: int = len(set(self.y_as_vector[:, 0]))
 
         if self.n_classes > 2:
             self.classification_type = CLASSIFICATION_TYPE_MULTICLASS
@@ -104,7 +106,7 @@ class TrainClassificationModel:
 
         if len(x_shape) == 2:
             if x_shape[0] <= 10:
-                raise Exception('If passed as vector, x should be a numpy array with shape (n,), n >= 10')
+                raise Exception('If passed as vector, x should be a numpy array with shape (n, m), n >= 10')
             self.x_as_vector: np.ndarray = x
             self.x_as_image: np.ndarray = None  # todo: think about reshaping strategies
         elif len(x_shape) == 3:
@@ -203,6 +205,7 @@ class TrainClassificationModel:
 
     def train_with_lstm(self):
         # todo
+        #  - https://www.curiousily.com/posts/time-series-classification-for-human-activity-recognition-with-lstms-in-keras/#classifying-human-activity
         pass
 
     def _train_model_with_keras(self,

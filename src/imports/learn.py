@@ -3,7 +3,7 @@ from src.imports.vanilla import logger
 # ML
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, RobustScaler, MinMaxScaler
 from sklearn.neighbors import KNeighborsClassifier
 import pickle
 from sklearn.model_selection import StratifiedShuffleSplit
@@ -21,5 +21,6 @@ import tensorflow as tf
 
 logger.debug("TensorFlow ready. Version:", tf.__version__)
 
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional
 from tensorflow.keras.models import Sequential
+from tensorflow.keras.utils import to_categorical
