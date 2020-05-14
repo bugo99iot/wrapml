@@ -1,18 +1,29 @@
+# Utils
 from src.imports.science import np
 from src.imports.vanilla import Dict
+
+# ML
 from src.imports.learn import pickle, StratifiedShuffleSplit
 from src.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
     XGBClassifier
 from src.imports.learn import GridSearchCV
 from src.imports.learn import f1_score, accuracy_score, precision_score, recall_score, matthews_corrcoef, \
     cohen_kappa_score, roc_auc_score, zero_one_loss, make_scorer
+from src.imports.learn import MinMaxScaler, OneHotEncoder
+
+# NN
+from src.imports.learn import Sequential, Dense, Dropout, LSTM
+from src.imports.learn import Precision, Recall, Accuracy
+
+# Internal
 from src.utils.logging import logger
+
+# Parameters
 from src.constants import DEFAULT_GRID_SEARCH_PARAMETERS, CLASSIFICATION_TYPE_BINARY, CLASSIFICATION_TYPE_MULTICLASS
 from src.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
 
 
 # todo HIGH PRIO:
-#  - add LSTM: # https://www.analyticsvidhya.com/blog/2019/01/introduction-time-series-classification/
 #  - save best model + path
 #  - print report, print small report, save report + path
 #  - add option print report
@@ -74,24 +85,49 @@ class TrainClassificationModel:
         self.report: Dict = {}
 
         # data
-        self.y_as_vector: np.ndarray = y
+        self.y_input = y
+        self.y: np.ndarray = self.y_input
+        self.x_input = x
+        self.x: np.ndarray = self.x_input
 
-        if not isinstance(y, np.ndarray):
+        if not isinstance(self.y, np.ndarray):
             raise Exception('y must be a numpy array')
 
-        # check labels shape
-        y_shape = y.shape
+        if not isinstance(self.x, np.ndarray):
+            raise Exception('x must be a numpy array')
 
-        if len(y_shape) not in (1, 2):
-            raise Exception('y should be a numpy array with shape (n,) or (n, 1)')
-        if len(y_shape) == 1:
-            self.y_as_vector: np.ndarray = self.y_as_vector.reshape(y_shape[0], 1)
+        if np.any(np.isnan(self.y)):
+            raise Exception('y cannot contain nan values')
 
-        if y_shape[0] <= 10:
-            raise Exception('y should be a numpy array with shape (n,), n >= 10')
+        if np.any(np.isnan(self.x)):
+            raise Exception('x cannot contain nan values')
 
-        self.n_classes: int = len(set(self.y_as_vector[:, 0]))
+        # todo:
+        #  - now we OHE y always: add support with y labels are ordinal and OHE should be avoided
+        #  - if not doing OHE, need to convert categorical labels
+        # check y
+        self.y_shape = self.y.shape
+        self.y_dim = len(self.y_shape)
 
+        if self.y_dim not in (1, 2) or self.y_shape[0] < 10 or (self.y_dim == 2 and self.y_shape[1] != 1):
+            raise Exception('y should be a numpy array with shape (n,) or (n, 1), n >= 10')
+
+        if self.y_dim == 1:
+            self.y: np.ndarray = self.y.reshape(self.y_shape[0], 1)
+            self.y_shape = y.shape
+            self.y_dim = len(self.y_shape)
+
+        # at this point, self.y has shape (n, 1), n >= 10
+
+        self.ohe = OneHotEncoder(sparse=False, categories='auto')
+        self.y_ohe = self.ohe.fit_transform(self.y)
+
+        self.y_ohe_shape = self.y_ohe.shape
+        self.y_ohe_dim = len(self.y_ohe.shape)
+
+        self.n_classes: int = self.y_ohe.shape[1]
+
+        # todo: add multi-label support
         if self.n_classes > 2:
             self.classification_type = CLASSIFICATION_TYPE_MULTICLASS
         elif self.n_classes == 2:
@@ -99,28 +135,93 @@ class TrainClassificationModel:
         else:
             raise Exception('n_classes must be 2 or larger')
 
-        if not isinstance(x, np.ndarray):
-            raise Exception('x must be a numpy array')
+        # check x
+        self.x_shape = self.x.shape
+        self.x_dim = len(self.x.shape)
 
-        x_shape = x.shape
+        if self.x_dim not in (1, 2, 3, 4) or self.x_shape[0] < 10:
+            raise Exception('x should be a numpy array with shape (n, m) or (n, m, p) or (n, m, p, g), n >= 10')
 
-        if len(x_shape) == 2:
-            if x_shape[0] <= 10:
-                raise Exception('If passed as vector, x should be a numpy array with shape (n, m), n >= 10')
-            self.x_as_vector: np.ndarray = x
-            self.x_as_image: np.ndarray = None  # todo: think about reshaping strategies
-        elif len(x_shape) == 3:
-            logger.warning('Be mindful, we assume x input to have shape (n_samples, x_dim, y_dim)')
-            self.x_as_vector: np.ndarray = x.reshape((x_shape[0], x_shape[1] * x_shape[2]))
-            self.x_as_image: np.ndarray = x.reshape((x_shape[0], 1, x_shape[1], x_shape[2]))
+        # todo: add possibility to convert non-images into images to run 2D CNN on it
 
-        elif len(x_shape) == 4:
-            logger.warning('Be mindful, we assume x input to have shape (n_samples, n_channels, x_dim, y_dim)')
+        if len(self.x_shape) == 1:
+            # (n_samples, 1), meaning n data points, each one with a scalar measure,
+            # e.g. measuring temperature at timestamps
 
-            self.x_as_vector: np.ndarray = x.reshape((x_shape[0], x_shape[1] * x_shape[2] * x_shape[3]))
-            self.x_as_image: np.ndarray = x
+            self.x_dim2 = self.x.reshape(self.x_shape[0], 1)
+            self.x_dim2_shape = self.x_dim2.shape
+            self.x_dim2_dim = len(self.x_dim2.shape)
+
+            self.x_dim3 = None
+            self.x_dim3_shape = None
+            self.x_dim3_dim = None
+
+            self.x_dim4 = None
+            self.x_dim4_shape = None
+            self.x_dim4_dim = None
+
+        if len(self.x_shape) == 2:
+            # (n_samples, m), meaning n data points, each one with a vector measure
+            # e.g. measuring temperature, wind, precipitation at timestamps
+
+            self.x_dim2 = self.x
+            self.x_dim2_shape = self.x_dim2.shape
+            self.x_dim2_dim = len(self.x_dim2.shape)
+
+            self.x_dim3 = None
+            self.x_dim3_shape = None
+            self.x_dim3_dim = None
+
+            self.x_dim4 = None
+            self.x_dim4_shape = None
+            self.x_dim4_dim = None
+
+        elif len(self.x_shape) == 3:
+            # (n_samples, m, n),
+            # meaning: either n data points, each one with multiple vector measures
+            # e.g. accelerometer in 3d at timestamps
+            # or: image with no channels, e.g. grayscale with one dimension missing
+
+            self.x_dim3 = self.x
+            self.x_dim3_shape = self.x_dim3.shape
+            self.x_dim3_dim = len(self.x_dim3.shape)
+
+            self.x_dim2 = self.x_dim3.reshape((self.x_dim3_shape[0], self.x_dim3_shape[1] * self.x_dim3_shape[2]))
+            self.x_dim2_shape = self.x_dim2.shape
+            self.x_dim2_dim = len(self.x_dim2.shape)
+
+            # channel last
+            self.x_dim4 = self.x_dim3.reshape((self.x_dim3_shape[0], self.x_dim3_shape[1], self.x_dim3_shape[2], 1))
+            self.x_dim4_shape = self.x_dim4.shape
+            self.x_dim4_dim = len(self.x_dim4.shape)
+
+        elif len(self.x_shape) == 4:
+            # (n_samples, xdim, ydim, n_channels)
+            # image with channels last
+
+            logger.warning('If image data passes, we assume channels last ordering, '
+                           'e.g. (n_samples, xdim, ydim, n_channels)')
+
+            self.x_dim4 = self.x
+            self.x_dim4_shape = self.x_dim4.shape
+            self.x_dim4_dim = len(self.x_dim4.shape)
+
+            self.x_dim2 = self.x_dim3.reshape((self.x_dim4_shape[0], self.x_dim4_shape[1] * self.x_dim4_shape[2] * self.x_dim4_shape[3]))
+            self.x_dim2_shape = self.x_dim2.shape
+            self.x_dim2_dim = len(self.x_dim2.shape)
+
+            self.x_dim3 = self.x_dim4.reshape((self.x_dim4_shape[0], self.x_dim4_shape[1] * self.x_dim4_shape[2], self.x_dim4_shape[3]))
+            self.x_dim3_shape = self.x_dim3.shape
+            self.x_dim3_dim = len(self.x_dim3.shape)
+
         else:
-            raise Exception('Shape of input x not understood, see documentation')
+            raise Exception('This should never happen')
+
+        self.x_dim2 = self.x_dim2.astype('float64')
+        self.x_dim3 = self.x_dim3.astype('float64') if self.x_dim3 is not None else None
+        self.x_dim4 = self.x_dim4.astype('float64') if self.x_dim4 is not None else None
+
+        # todo: add rescale option
 
     def train_with_knn(self,
                        do_grid_search: bool = None,
@@ -131,10 +232,10 @@ class TrainClassificationModel:
 
         model = KNeighborsClassifier(**kwargs, n_jobs=self.n_jobs)
 
-        self._train_model_with_keras(model=model,
-                                     grid_search_parameters=grid_search_parameters,
-                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                                     do_grid_search=do_grid_search)
+        self._train_with_keras(model=model,
+                               grid_search_parameters=grid_search_parameters,
+                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                               do_grid_search=do_grid_search)
 
     def train_with_random_forests(self,
                                   do_grid_search: bool = None,
@@ -144,10 +245,10 @@ class TrainClassificationModel:
 
         model = RandomForestClassifier(**kwargs, random_state=self.random_state, n_jobs=self.n_jobs)
 
-        self._train_model_with_keras(model=model,
-                                     grid_search_parameters=grid_search_parameters,
-                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                                     do_grid_search=do_grid_search)
+        self._train_with_keras(model=model,
+                               grid_search_parameters=grid_search_parameters,
+                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                               do_grid_search=do_grid_search)
 
     def train_with_mlp(self,
                        do_grid_search: bool = None,
@@ -157,10 +258,10 @@ class TrainClassificationModel:
 
         model = MLPClassifier(**kwargs, random_state=self.random_state, early_stopping=True)
 
-        self._train_model_with_keras(model=model,
-                                     grid_search_parameters=grid_search_parameters,
-                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                                     do_grid_search=do_grid_search)
+        self._train_with_keras(model=model,
+                               grid_search_parameters=grid_search_parameters,
+                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                               do_grid_search=do_grid_search)
 
     def train_with_xgboost(self,
                            do_grid_search: bool = None,
@@ -172,10 +273,10 @@ class TrainClassificationModel:
 
         model = XGBClassifier(**kwargs, n_jobs=self.n_jobs, random_state=self.random_state)
 
-        self._train_model_with_keras(model=model,
-                                     grid_search_parameters=grid_search_parameters,
-                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                                     do_grid_search=do_grid_search)
+        self._train_with_keras(model=model,
+                               grid_search_parameters=grid_search_parameters,
+                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                               do_grid_search=do_grid_search)
 
     def train_with_ada(self,
                        do_grid_search: bool = None,
@@ -185,10 +286,10 @@ class TrainClassificationModel:
 
         model = AdaBoostClassifier(**kwargs, random_state=self.random_state)
 
-        self._train_model_with_keras(model=model,
-                                     grid_search_parameters=grid_search_parameters,
-                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                                     do_grid_search=do_grid_search)
+        self._train_with_keras(model=model,
+                               grid_search_parameters=grid_search_parameters,
+                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                               do_grid_search=do_grid_search)
 
     def train_with_svc(self,
                        do_grid_search: bool = None,
@@ -198,22 +299,52 @@ class TrainClassificationModel:
 
         model = SVC(**kwargs, random_state=self.random_state)
 
-        self._train_model_with_keras(model=model,
-                                     grid_search_parameters=grid_search_parameters,
-                                     score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                                     do_grid_search=do_grid_search)
+        self._train_with_keras(model=model,
+                               grid_search_parameters=grid_search_parameters,
+                               score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
+                               do_grid_search=do_grid_search)
 
     def train_with_lstm(self):
-        # todo
-        #  - https://www.curiousily.com/posts/time-series-classification-for-human-activity-recognition-with-lstms-in-keras/#classifying-human-activity
-        pass
 
-    def _train_model_with_keras(self,
-                                model,
-                                do_grid_search: bool,
-                                grid_search_parameters: Dict,
-                                score_criteria_for_best_model_fit: str,
-                                ):
+        # todo: parameter search with LSTM
+
+        if self.x_dim3 is None:
+            raise Exception('Cannot train x with LSTM given shape')
+
+        # todo: change to binary crossentropy and sigmoid when binary
+
+        model = Sequential()
+        model.add(LSTM(units=32, input_shape=(self.x_dim3_shape[1], self.x_dim3_shape[2])))
+        model.add(Dropout(rate=0.5))
+        model.add(Dense(units=100, activation='softmax'))
+        model.add(Dense(self.n_classes, activation='softmax'))
+
+        model.summary()
+
+        model.compile(
+            loss='categorical_crossentropy',
+            optimizer='adam',
+            metrics=[Precision(thresholds=0.5), Recall(thresholds=0.5), Accuracy()]
+        )
+
+        history = model.fit(
+            self.x_dim3, self.y_ohe,
+            epochs=10,
+            batch_size=32,
+            validation_split=0.2,
+            shuffle=True
+        )
+
+        # model.evaluate(x, y)
+
+        return
+
+    def _train_with_keras(self,
+                          model,
+                          do_grid_search: bool,
+                          grid_search_parameters: Dict,
+                          score_criteria_for_best_model_fit: str,
+                          ):
         """
 
         :param model:
@@ -260,7 +391,7 @@ class TrainClassificationModel:
                                         cv=sss,
                                         return_train_score=True)
 
-        model_gridsearch.fit(self.x_as_vector, self.y_as_vector)
+        model_gridsearch.fit(self.x_dim2, self.y)
 
         index_of_best_model = model_gridsearch.best_index_
         results = model_gridsearch.cv_results_
@@ -291,9 +422,9 @@ class TrainClassificationModel:
         logger.info('Training with {} done. Fit time: {}s.'.format(self.model_name,
                                                                    self.fit_time_total_s))
 
-        self._calculate_report_for_model()
+        self._calculate_report_for_model_keras()
 
-    def _calculate_report_for_model(self):
+    def _calculate_report_for_model_keras(self):
 
         report = self.score
 

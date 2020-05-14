@@ -24,3 +24,6 @@ logger.debug("TensorFlow ready. Version:", tf.__version__)
 from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.utils import to_categorical
+
+from tensorflow.keras.metrics import Precision, Recall, Accuracy, \
+    TrueNegatives, TruePositives, FalseNegatives, FalsePositives

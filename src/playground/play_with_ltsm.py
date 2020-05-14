@@ -4,8 +4,8 @@
 #  (22454, 200, 3) (22454, 1)
 
 from src.imports.science import random, np
-from src.imports.learn import Sequential, Dense, Dropout, LSTM, Bidirectional
-from src.imports.learn import MinMaxScaler, OneHotEncoder, to_categorical
+from src.imports.learn import Sequential, Dense, Dropout, LSTM
+from src.imports.learn import MinMaxScaler, OneHotEncoder
 
 from src.learn.supervised.classification import TrainClassificationModel
 
@@ -48,14 +48,17 @@ def main():
 
     tcm = TrainClassificationModel(x=x, y=y)
 
-    tcm.train_with_random_forests()
+    tcm.train_with_mlp()
     print(tcm.report)
+
+    tcm.train_with_lstm()
+
+    return
 
     do_ohe = True
     if do_ohe:
-        y = to_categorical(y)
-        #onehot_encoder = OneHotEncoder(sparse=False, categories='auto')
-        #y = onehot_encoder.fit_transform(y)
+        ohe = OneHotEncoder(sparse=False, categories='auto')
+        y = ohe.fit_transform(y)
 
     x = x.astype('float64')
     #y = y.astype('int')
