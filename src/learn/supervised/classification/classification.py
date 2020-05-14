@@ -1,6 +1,5 @@
 # Utils
 from src.imports.vanilla import Dict, Optional
-from src.exceptions import ModelNotTrainableException
 
 # DS
 from src.imports.science import np
@@ -23,6 +22,7 @@ from src.imports.learn import Precision, Recall, Accuracy, SparseCategoricalAccu
 
 # Internal
 from src.utils.logging import logger
+from src.exceptions import ModelNotTrainableException
 
 # Parameters
 from src.constants import DEFAULT_GRID_SEARCH_PARAMETERS, CLASSIFICATION_TYPE_BINARY, CLASSIFICATION_TYPE_MULTICLASS
