@@ -1,6 +1,6 @@
 
 
-class CannotTrainModel(Exception):
+class ModelNotTrainableException(Exception):
     """
     Exception raised when model cannot be trained given shape of x.
     """

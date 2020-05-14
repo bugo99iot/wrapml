@@ -1,5 +1,6 @@
 # Utils
 from src.imports.vanilla import Dict, Optional
+from src.exceptions import ModelNotTrainableException
 
 # DS
 from src.imports.science import np
@@ -426,7 +427,7 @@ class TrainClassificationModel:
         self.model_name = 'LSTMClassifier'
 
         if self.x_dim3 is None:
-            raise Exception('Cannot train with {} given x shape'.format(self.model_name))
+            raise ModelNotTrainableException('Cannot train with {} given x shape'.format(self.model_name))
 
         self.model = Sequential(name=self.model_name)
         self.model.add(LSTM(units=32, input_shape=(self.x_dim3_shape[1], self.x_dim3_shape[2])))
