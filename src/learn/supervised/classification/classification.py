@@ -17,8 +17,9 @@ from src.imports.learn import train_test_split
 from src.imports.learn import GridSearchCV
 
 # NN
-from src.imports.learn import Sequential, Dense, Dropout, LSTM
+from src.imports.learn import Sequential, Dense, Dropout, LSTM, Conv2D, MaxPooling2D, Flatten
 from src.imports.learn import Precision, Recall, Accuracy, SparseCategoricalAccuracy
+from src.imports.learn import K
 
 # Internal
 from src.utils.logging import logger
@@ -212,7 +213,7 @@ class TrainClassificationModel:
             self.x_dim4_shape = self.x_dim4.shape
             self.x_dim4_dim = len(self.x_dim4.shape)
 
-            self.x_dim2 = self.x_dim3.reshape((self.x_dim4_shape[0], self.x_dim4_shape[1] * self.x_dim4_shape[2] * self.x_dim4_shape[3]))
+            self.x_dim2 = self.x_dim4.reshape((self.x_dim4_shape[0], self.x_dim4_shape[1] * self.x_dim4_shape[2] * self.x_dim4_shape[3]))
             self.x_dim2_shape = self.x_dim2.shape
             self.x_dim2_dim = len(self.x_dim2.shape)
 
@@ -223,9 +224,9 @@ class TrainClassificationModel:
         else:
             raise Exception('This should never happen')
 
-        self.x_dim2 = self.x_dim2.astype('float64')
-        self.x_dim3 = self.x_dim3.astype('float64') if self.x_dim3 is not None else None
-        self.x_dim4 = self.x_dim4.astype('float64') if self.x_dim4 is not None else None
+        self.x_dim2 = self.x_dim2.astype('float32')
+        self.x_dim3 = self.x_dim3.astype('float32') if self.x_dim3 is not None else None
+        self.x_dim4 = self.x_dim4.astype('float32') if self.x_dim4 is not None else None
 
         # todo: add rescale option
 
@@ -432,7 +433,7 @@ class TrainClassificationModel:
         self.model = Sequential(name=self.model_name)
         self.model.add(LSTM(units=32, input_shape=(self.x_dim3_shape[1], self.x_dim3_shape[2])))
         self.model.add(Dropout(rate=0.5))
-        self.model.add(Dense(units=100, activation='softmax'))
+        self.model.add(Dense(units=100, activation='relu'))
         self.model.add(Dense(self.n_classes, activation='softmax'))
 
         self.model.summary()
@@ -453,7 +454,7 @@ class TrainClassificationModel:
 
         history = self.model.fit(
             x_train, y_train,
-            epochs=10,
+            epochs=20,
             batch_size=32,
             validation_split=0.2,
             shuffle=True
@@ -471,8 +472,67 @@ class TrainClassificationModel:
     def train_with_cnn(self):
         self.model_name = 'CNNClassifier'
 
-        # todo:
-        #  - 1d and 3d?
+        if self.x_dim4 is None:
+            raise ModelNotTrainableException('Cannot train with {} given x shape'.format(self.model_name))
+
+        # todo: infer input channels first or last and squared
+        """
+        if K.image_data_format() == 'channels_first':
+            x_train = x_train.reshape(x_train.shape[0], 1, img_rows, img_cols)
+            x_test = x_test.reshape(x_test.shape[0], 1, img_rows, img_cols)
+            input_shape = (1, img_rows, img_cols)
+        else:
+            x_train = x_train.reshape(x_train.shape[0], img_rows, img_cols, 1)
+            x_test = x_test.reshape(x_test.shape[0], img_rows, img_cols, 1)
+            input_shape = (img_rows, img_cols, 1)
+        """
+
+        self.model = Sequential()
+        self.model.add(Conv2D(32,
+                              kernel_size=(5, 5),
+                              activation='relu',
+                              input_shape=(self.x_dim4_shape[1], self.x_dim4_shape[2], self.x_dim4_shape[3])))
+        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        self.model.add(Conv2D(64,
+                              kernel_size=(15, 15),
+                              activation='relu'))
+        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        self.model.add(Dropout(0.25))
+        self.model.add(Flatten())
+        self.model.add(Dense(100, activation='relu'))
+        self.model.add(Dropout(0.5))
+        self.model.add(Dense(self.n_classes, activation='softmax'))
+
+        self.model.summary()
+
+        metrics = ['accuracy', Precision(thresholds=0.5), Recall(thresholds=0.5)]
+
+        self.model.compile(
+            loss='categorical_crossentropy',
+            optimizer='adam',
+            metrics=metrics
+        )
+
+        x_train, x_test, y_train, y_test = train_test_split(self.x_dim4, self.y_ohe,
+                                                            test_size=self.test_size,
+                                                            random_state=self.random_state,
+                                                            stratify=self.y_ohe,
+                                                            )
+
+        history = self.model.fit(
+            x_train, y_train,
+            epochs=20,
+            batch_size=32,
+            validation_split=0.2,
+            shuffle=True
+        )
+
+        make_training_history_plot(history=history, metric='accuracy')
+        make_training_history_plot(history=history, metric='loss')
+
+        self.score = self.model.evaluate(x_test, y_test)
+
+        print(self.score)
 
         return
 
