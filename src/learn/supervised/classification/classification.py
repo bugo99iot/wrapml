@@ -1,6 +1,9 @@
 # Utils
-from src.imports.science import np
 from src.imports.vanilla import Dict, Optional
+
+# DS
+from src.imports.science import np
+from src.plots.plots import make_training_history_plot
 
 # ML
 from src.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
@@ -225,6 +228,8 @@ class TrainClassificationModel:
 
         # todo: add rescale option
 
+    # Keras based
+
     def train_with_knn(self,
                        do_grid_search: bool = None,
                        grid_search_parameters: Dict = None,
@@ -305,54 +310,6 @@ class TrainClassificationModel:
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
                                do_grid_search=do_grid_search)
-
-    def train_with_lstm(self):
-
-        # todo:
-        #  - add k-folds
-        #  - add parameter search
-        #  - add report
-
-        if self.x_dim3 is None:
-            raise Exception('Cannot train x with LSTM given shape')
-
-        # todo: change to binary crossentropy and sigmoid when binary
-
-        model = Sequential()
-        model.add(LSTM(units=32, input_shape=(self.x_dim3_shape[1], self.x_dim3_shape[2])))
-        model.add(Dropout(rate=0.5))
-        model.add(Dense(units=100, activation='softmax'))
-        model.add(Dense(self.n_classes, activation='softmax'))
-
-        model.summary()
-
-        metrics = ['acc', Precision(thresholds=0.5), Recall(thresholds=0.5)]
-
-        model.compile(
-            loss='categorical_crossentropy',
-            optimizer='adam',
-            metrics=metrics
-        )
-
-        x_train, x_test, y_train, y_test = train_test_split(self.x_dim3, self.y_ohe,
-                                                            test_size=self.test_size,
-                                                            random_state=self.random_state,
-                                                            stratify=self.y_ohe,
-                                                            )
-
-        history = model.fit(
-            x_train, y_train,
-            epochs=10,
-            batch_size=32,
-            validation_split=0.2,
-            shuffle=True
-        )
-
-        results = model.evaluate(x_test, y_test)
-
-        print(results)
-
-        return
 
     def _train_with_keras(self,
                           model,
@@ -456,6 +413,72 @@ class TrainClassificationModel:
 
         self.report = report
 
+    # Tensorflow based
+
+    def train_with_lstm(self):
+
+        # todo:
+        #  - add k-folds
+        #  - add parameter search
+        #  - add report
+        #  - loss as binary crossentropy + 1 neuron sigmoid final layer when binary
+
+        self.model_name = 'LSTMClassifier'
+
+        if self.x_dim3 is None:
+            raise Exception('Cannot train with {} given x shape'.format(self.model_name))
+
+        self.model = Sequential(name=self.model_name)
+        self.model.add(LSTM(units=32, input_shape=(self.x_dim3_shape[1], self.x_dim3_shape[2])))
+        self.model.add(Dropout(rate=0.5))
+        self.model.add(Dense(units=100, activation='softmax'))
+        self.model.add(Dense(self.n_classes, activation='softmax'))
+
+        self.model.summary()
+
+        metrics = ['accuracy', Precision(thresholds=0.5), Recall(thresholds=0.5)]
+
+        self.model.compile(
+            loss='categorical_crossentropy',
+            optimizer='adam',
+            metrics=metrics
+        )
+
+        x_train, x_test, y_train, y_test = train_test_split(self.x_dim3, self.y_ohe,
+                                                            test_size=self.test_size,
+                                                            random_state=self.random_state,
+                                                            stratify=self.y_ohe,
+                                                            )
+
+        history = self.model.fit(
+            x_train, y_train,
+            epochs=10,
+            batch_size=32,
+            validation_split=0.2,
+            shuffle=True
+        )
+
+        make_training_history_plot(history=history, metric='accuracy')
+        make_training_history_plot(history=history, metric='loss')
+
+        self.score = self.model.evaluate(x_test, y_test)
+
+        print(self.score)
+
+        return
+
+    def train_with_cnn(self):
+        self.model_name = 'CNNClassifier'
+
+        # todo:
+        #  - 1d and 3d?
+
+        return
+
+    def _train_with_tensorflow(self):
+
+        return
+
     def predict(self, x: np.ndarray):
         return self.model.predict(x)
 
@@ -545,6 +568,3 @@ class TrainClassificationModel:
         report['best_estimator']['best_estimator_fit_time_k_folds_s'] = best_estimator_fit_time_k_folds_s
 
         self.report = report
-
-    def train_all_with_search(self):
-        pass
