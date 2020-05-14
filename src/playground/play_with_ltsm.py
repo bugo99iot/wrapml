@@ -1,11 +1,8 @@
-# todo:
-#  - https://www.curiousily.com/posts/time-series-classification-for-human-activity-recognition-with-lstms-in-keras/#classifying-human-activity
-#  print(X_train.shape, y_train.shape)
-#  (22454, 200, 3) (22454, 1)
+# https://www.curiousily.com/posts/time-series-classification-for-human-activity-recognition-with-lstms-in-keras/#classifying-human-activity
 
 from src.imports.science import random, np
 from src.imports.learn import Sequential, Dense, Dropout, LSTM
-from src.imports.learn import MinMaxScaler, OneHotEncoder
+from src.imports.learn import MinMaxScaler, OneHotEncoder, train_test_split
 
 from src.learn.supervised.classification import TrainClassificationModel
 
@@ -33,10 +30,9 @@ def main():
     x = np.array(x)
     y = np.array(y).reshape((n, 1))
 
-    print(x.shape, y.shape)
-
     assert x.shape == (n, m, p)
     assert y.shape == (n, 1)
+
 
     do_rescale = True
     if do_rescale:

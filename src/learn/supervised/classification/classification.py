@@ -1,19 +1,21 @@
 # Utils
 from src.imports.science import np
-from src.imports.vanilla import Dict
+from src.imports.vanilla import Dict, Optional
 
 # ML
-from src.imports.learn import pickle, StratifiedShuffleSplit
 from src.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
     XGBClassifier
-from src.imports.learn import GridSearchCV
 from src.imports.learn import f1_score, accuracy_score, precision_score, recall_score, matthews_corrcoef, \
     cohen_kappa_score, roc_auc_score, zero_one_loss, make_scorer
-from src.imports.learn import MinMaxScaler, OneHotEncoder
+from src.imports.learn import MinMaxScaler, OneHotEncoder, to_categorical
+
+from src.imports.learn import pickle, StratifiedShuffleSplit
+from src.imports.learn import train_test_split
+from src.imports.learn import GridSearchCV
 
 # NN
 from src.imports.learn import Sequential, Dense, Dropout, LSTM
-from src.imports.learn import Precision, Recall, Accuracy
+from src.imports.learn import Precision, Recall, Accuracy, SparseCategoricalAccuracy
 
 # Internal
 from src.utils.logging import logger
@@ -53,7 +55,7 @@ class TrainClassificationModel:
     def __init__(self, x: np.ndarray,
                  y: np.ndarray):
 
-        # todo: put stuff into init
+        # todo: make some properties available in init?
 
         # setup
         self.random_state = DEFAULT_RANDOM_STATE
@@ -61,10 +63,10 @@ class TrainClassificationModel:
 
         # scoring
         self.test_size = DEFAULT_TEST_SIZE
-        self.stratify = True  # todo: at the moment we stratify by default, might offer non-stratified
+        self.stratify = True  # todo: add stratify = False option
         self.k_fold_cross_validation = 1
-        self.fit_time_best_model_k_folds_s: int = None
-        self.fit_time_total_s: int = None
+        self.fit_time_best_model_k_folds_s: Optional[int] = None
+        self.fit_time_total_s: Optional[int] = None
         self.score: Dict = {}
         self.score_dp: int = 4
         self.score_average_method: str = 'weighted'
@@ -76,10 +78,10 @@ class TrainClassificationModel:
         # model
         self.model = None
         self.best_model_parameters: Dict = {}
-        self.model_name: str = None
+        self.model_name: Optional[str] = None
 
         self.best_parameters_from_grid_search: Dict = {}
-        self.parameter_combinations_searched: int = None
+        self.parameter_combinations_searched: Optional[int] = None
 
         # report
         self.report: Dict = {}
@@ -306,7 +308,10 @@ class TrainClassificationModel:
 
     def train_with_lstm(self):
 
-        # todo: parameter search with LSTM
+        # todo:
+        #  - add k-folds
+        #  - add parameter search
+        #  - add report
 
         if self.x_dim3 is None:
             raise Exception('Cannot train x with LSTM given shape')
@@ -321,21 +326,31 @@ class TrainClassificationModel:
 
         model.summary()
 
+        metrics = ['acc', Precision(thresholds=0.5), Recall(thresholds=0.5)]
+
         model.compile(
             loss='categorical_crossentropy',
             optimizer='adam',
-            metrics=[Precision(thresholds=0.5), Recall(thresholds=0.5), Accuracy()]
+            metrics=metrics
         )
 
+        x_train, x_test, y_train, y_test = train_test_split(self.x_dim3, self.y_ohe,
+                                                            test_size=self.test_size,
+                                                            random_state=self.random_state,
+                                                            stratify=self.y_ohe,
+                                                            )
+
         history = model.fit(
-            self.x_dim3, self.y_ohe,
+            x_train, y_train,
             epochs=10,
             batch_size=32,
             validation_split=0.2,
             shuffle=True
         )
 
-        # model.evaluate(x, y)
+        results = model.evaluate(x_test, y_test)
+
+        print(results)
 
         return
 

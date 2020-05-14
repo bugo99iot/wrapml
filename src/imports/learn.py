@@ -15,7 +15,7 @@ from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from xgboost import XGBClassifier
 
-# Tensorflow
+# NN
 
 import tensorflow as tf
 
@@ -25,5 +25,5 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.utils import to_categorical
 
-from tensorflow.keras.metrics import Precision, Recall, Accuracy, \
+from tensorflow.keras.metrics import Precision, Recall, Accuracy, SparseCategoricalAccuracy, \
     TrueNegatives, TruePositives, FalseNegatives, FalsePositives
