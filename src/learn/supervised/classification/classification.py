@@ -3,7 +3,7 @@ from src.imports.vanilla import Dict, Optional
 
 # DS
 from src.imports.science import np
-from src.plots.plots import make_training_history_plot
+from src.plots import make_training_history_plot
 
 # ML
 from src.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
@@ -421,7 +421,7 @@ class TrainClassificationModel:
 
         # todo:
         #  - add k-folds
-        #  - add parameter search
+        #  - add k-folds + grid search: https://machinelearningmastery.com/grid-search-hyperparameters-deep-learning-models-python-keras/
         #  - add report
         #  - loss as binary crossentropy + 1 neuron sigmoid final layer when binary
 
@@ -469,13 +469,15 @@ class TrainClassificationModel:
 
         return
 
-    def train_with_cnn(self):
+    def train_with_conv2d(self):
         self.model_name = 'CNNClassifier'
 
         if self.x_dim4 is None:
             raise ModelNotTrainableException('Cannot train with {} given x shape'.format(self.model_name))
 
-        # todo: infer input channels first or last and squared
+        # todo:
+        #  - infer input channels first or last and squared
+        #  - infer batch size and 2d kernels from image size
         """
         if K.image_data_format() == 'channels_first':
             x_train = x_train.reshape(x_train.shape[0], 1, img_rows, img_cols)
@@ -487,19 +489,19 @@ class TrainClassificationModel:
             input_shape = (img_rows, img_cols, 1)
         """
 
-        self.model = Sequential()
-        self.model.add(Conv2D(32,
-                              kernel_size=(5, 5),
+        self.model = Sequential(name=self.model_name)
+        self.model.add(Conv2D(filters=32,
+                              kernel_size=(3, 3),
                               activation='relu',
                               input_shape=(self.x_dim4_shape[1], self.x_dim4_shape[2], self.x_dim4_shape[3])))
         self.model.add(MaxPooling2D(pool_size=(2, 2)))
-        self.model.add(Conv2D(64,
-                              kernel_size=(15, 15),
+        self.model.add(Conv2D(filters=64,
+                              kernel_size=(11, 11),
                               activation='relu'))
         self.model.add(MaxPooling2D(pool_size=(2, 2)))
         self.model.add(Dropout(0.25))
         self.model.add(Flatten())
-        self.model.add(Dense(100, activation='relu'))
+        self.model.add(Dense(units=100, activation='relu'))
         self.model.add(Dropout(0.5))
         self.model.add(Dense(self.n_classes, activation='softmax'))
 
@@ -521,7 +523,7 @@ class TrainClassificationModel:
 
         history = self.model.fit(
             x_train, y_train,
-            epochs=20,
+            epochs=100,
             batch_size=32,
             validation_split=0.2,
             shuffle=True

@@ -8,7 +8,7 @@ def make_training_history_plot(history, metric: str):
     plt.ylabel(metric.capitalize())
     plt.xlabel('Epoch')
     loc = 'center right' if 'loss' not in metric else 'upper right'
-    plt.legend(['train', 'validate'], loc=loc)
+    plt.legend(['train', 'valid'], loc=loc)
     plt.show()
 
 
