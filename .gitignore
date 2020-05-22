@@ -9,6 +9,8 @@
 !Makefile
 !settings.py
 !setup.py
+!setup.cfg
+!LICENSE.txt
 
 # But ignore also
 **/__pycache__

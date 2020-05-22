@@ -45,3 +45,8 @@ install-xgboost-mac: ## Install XGBoost on a mac
 	brew install gcc
 	brew info gcc
 	export CC=gcc-8; export CXX=g++-8; pip install xgboost
+
+.PHONY: deploy-to-pypi
+deploy-to-pypi: ## Deploy to PyPi
+	python setup.py sdist
+	twine upload dist/* --verbose
