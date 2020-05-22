@@ -1,14 +1,16 @@
+import pathlib
+import pkg_resources
 from setuptools import setup, find_packages
 
-with open('requirements.txt', encoding='utf-8') as f:
-    required = f.read().splitlines()
+with pathlib.Path('requirements.txt').open() as requirements_txt:
+    required = [str(requirement) for requirement in pkg_resources.parse_requirements(requirements_txt)]
 
 with open('README.md', encoding='utf-8') as f:
     readme = f.read()
 
-version = '0.0.1'
+version = '0.0.6'
 
-setup(name='WrapML',
+setup(name='wrapml',
       packages=find_packages(),
       version=version,
       description='Simplifying ML.',

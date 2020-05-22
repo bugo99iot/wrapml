@@ -48,5 +48,7 @@ install-xgboost-mac: ## Install XGBoost on a mac
 
 .PHONY: deploy-to-pypi
 deploy-to-pypi: ## Deploy to PyPi
+	rm -r dist || true
+	rm -r WrapML.egg-info || true
 	python setup.py sdist
 	twine upload dist/* --verbose

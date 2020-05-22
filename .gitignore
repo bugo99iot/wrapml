@@ -2,7 +2,7 @@
 /*
 
 # Except for
-!/src/
+!/wrapml/
 !requirements.txt
 !.gitignore
 !README.md
@@ -11,6 +11,7 @@
 !setup.py
 !setup.cfg
 !LICENSE.txt
+!MANIFEST.in
 
 # But ignore also
 **/__pycache__
