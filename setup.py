@@ -2,6 +2,7 @@ import pathlib
 import pkg_resources
 from setuptools import setup, find_packages
 
+# todo: remove unneeded packages such as tensorboard, twine, etc
 with pathlib.Path('requirements.txt').open() as requirements_txt:
     required = [str(requirement) for requirement in pkg_resources.parse_requirements(requirements_txt)]
 

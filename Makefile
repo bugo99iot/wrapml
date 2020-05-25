@@ -52,3 +52,5 @@ deploy-to-pypi: ## Deploy to PyPi
 	rm -r WrapML.egg-info || true
 	python setup.py sdist
 	twine upload dist/* --verbose
+	rm -r dist || true
+	rm -r WrapML.egg-info || true

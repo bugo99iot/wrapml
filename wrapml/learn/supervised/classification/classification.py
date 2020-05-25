@@ -1,5 +1,6 @@
 # Utils
 from wrapml.imports.vanilla import Dict, Optional
+from wrapml.imports.vanilla import pprint
 
 # DS
 from wrapml.imports.science import np
@@ -32,11 +33,11 @@ from wrapml.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
 
 # todo HIGH PRIO:
 #  - save best model + path
-#  - print report, print small report, save report + path
-#  - add option print report
+#  - save report + path
 #  - add score given min probability for classifier which provide probability
 #  - add models ranking to report
 #  - add: refit best model when search all
+#  - process y when making prediction
 
 
 # todo MED PRIO:
@@ -46,6 +47,7 @@ from wrapml.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
 #  - fix labels encoding
 #  - class weight support
 #  - add CNN tensorflow and beyond + rescale image 255 / https://www.tensorflow.org/tutorials/images/classification
+
 
 # todo LOW PRIO
 #  - add OneVsRestClassifier
@@ -236,6 +238,7 @@ class ClassificationTask:
                        do_grid_search: bool = None,
                        grid_search_parameters: Dict = None,
                        score_criteria_for_best_model_fit: str = None,
+                       print_report: bool = True,
                        **kwargs
                        ):
 
@@ -244,12 +247,14 @@ class ClassificationTask:
         self._train_with_keras(model=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               print_report=print_report)
 
     def train_with_random_forests(self,
                                   do_grid_search: bool = None,
                                   grid_search_parameters: Dict = None,
                                   score_criteria_for_best_model_fit: str = None,
+                                  print_report: bool = True,
                                   **kwargs):
 
         model = RandomForestClassifier(**kwargs, random_state=self.random_state, n_jobs=self.n_jobs)
@@ -257,12 +262,14 @@ class ClassificationTask:
         self._train_with_keras(model=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               print_report=print_report)
 
     def train_with_mlp(self,
                        do_grid_search: bool = None,
                        grid_search_parameters: Dict = None,
                        score_criteria_for_best_model_fit: str = None,
+                       print_report: bool = True,
                        **kwargs):
 
         model = MLPClassifier(**kwargs, random_state=self.random_state, early_stopping=True)
@@ -270,12 +277,14 @@ class ClassificationTask:
         self._train_with_keras(model=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               print_report=print_report)
 
     def train_with_xgboost(self,
                            do_grid_search: bool = None,
                            grid_search_parameters: Dict = None,
                            score_criteria_for_best_model_fit: str = None,
+                           print_report: bool = True,
                            **kwargs):
         # https://xgboost.readthedocs.io/en/latest/python/python_api.html
         # https://xgboost.readthedocs.io/en/latest/parameter.html
@@ -285,12 +294,14 @@ class ClassificationTask:
         self._train_with_keras(model=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               print_report=print_report)
 
     def train_with_ada(self,
                        do_grid_search: bool = None,
                        grid_search_parameters: Dict = None,
                        score_criteria_for_best_model_fit: str = None,
+                       print_report: bool = True,
                        **kwargs):
 
         model = AdaBoostClassifier(**kwargs, random_state=self.random_state)
@@ -298,12 +309,14 @@ class ClassificationTask:
         self._train_with_keras(model=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               print_report=print_report)
 
     def train_with_svc(self,
                        do_grid_search: bool = None,
                        grid_search_parameters: Dict = None,
                        score_criteria_for_best_model_fit: str = None,
+                       print_report: bool = True,
                        **kwargs):
 
         model = SVC(**kwargs, random_state=self.random_state)
@@ -311,13 +324,15 @@ class ClassificationTask:
         self._train_with_keras(model=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               print_report=print_report)
 
     def _train_with_keras(self,
                           model,
                           do_grid_search: bool,
                           grid_search_parameters: Dict,
                           score_criteria_for_best_model_fit: str,
+                          print_report: bool
                           ):
         """
 
@@ -397,6 +412,9 @@ class ClassificationTask:
                                                                    self.fit_time_total_s))
 
         self._calculate_report_for_model_keras()
+
+        if print_report:
+            pprint(self.report)
 
     def _calculate_report_for_model_keras(self):
 
@@ -582,28 +600,29 @@ class ClassificationTask:
                                 # 'roc_auc_score': make_scorer(roc_auc_score, average='macro', multi_class='ovo')
                                 }
 
-    def search_estimator(self, do_grid_search: bool = False):
+    def search_estimator(self, do_grid_search: bool = False,
+                         print_report: bool = True):
 
         # todo: add custom scoring criteria?
 
         report = {}
 
-        self.train_with_random_forests(do_grid_search=do_grid_search)
+        self.train_with_random_forests(do_grid_search=do_grid_search, print_report=False)
         report[self.model_name] = self.report
 
-        self.train_with_knn(do_grid_search=do_grid_search)
+        self.train_with_knn(do_grid_search=do_grid_search, print_report=False)
         report[self.model_name] = self.report
 
-        self.train_with_mlp(do_grid_search=do_grid_search)
+        self.train_with_mlp(do_grid_search=do_grid_search, print_report=False)
         report[self.model_name] = self.report
 
-        self.train_with_svc(do_grid_search=do_grid_search)
+        self.train_with_svc(do_grid_search=do_grid_search, print_report=False)
         report[self.model_name] = self.report
 
-        self.train_with_xgboost(do_grid_search=do_grid_search)
+        self.train_with_xgboost(do_grid_search=do_grid_search, print_report=False)
         report[self.model_name] = self.report
 
-        self.train_with_ada(do_grid_search=do_grid_search)
+        self.train_with_ada(do_grid_search=do_grid_search, print_report=False)
         report[self.model_name] = self.report
 
         best_estimator_best_score = None
@@ -631,3 +650,6 @@ class ClassificationTask:
         report['best_estimator']['best_estimator_fit_time_k_folds_s'] = best_estimator_fit_time_k_folds_s
 
         self.report = report
+
+        if print_report:
+            pprint(self.report)
