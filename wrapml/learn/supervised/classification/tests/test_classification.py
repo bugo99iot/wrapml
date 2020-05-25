@@ -58,9 +58,7 @@ class TestTrainClassificationModelIris(TestCase):
 
     x, y = load_iris(return_X_y=True)
 
-    print(x.shape)
-
-    def test_wine(self):
+    def test_iris(self):
 
         tm = ClassificationTask(x=self.x, y=self.y)
 
