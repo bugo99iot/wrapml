@@ -18,6 +18,7 @@ from wrapml.imports.learn import train_test_split
 from wrapml.imports.learn import GridSearchCV
 
 from wrapml.imports.learn import History
+from wrapml.imports.learn import EarlyStopping
 
 # NN
 from wrapml.imports.learn import Sequential, Dense, Dropout, LSTM, Conv2D, MaxPooling2D, Flatten
@@ -468,7 +469,8 @@ class ClassificationTask:
 
     # Tensorflow based
 
-    def train_with_lstm(self):
+    def train_with_lstm(self,
+                        **kwargs):
 
         # todo:
         #  - add k-folds
@@ -503,19 +505,26 @@ class ClassificationTask:
                                                             stratify=self.y_ohe,
                                                             )
 
+        early_stopping_callback = EarlyStopping(monitor='loss', patience=5)
+        epochs = kwargs.get('epochs') if kwargs.get('epochs') else 100
+        if epochs < 10:
+            raise Exception('epochs must be >= 10')
+
         self.history = self.model.fit(
             x_train, y_train,
-            epochs=20,
+            epochs=epochs,
             batch_size=32,
             validation_split=0.2,
-            shuffle=True
+            shuffle=True,
+            callbacks=[early_stopping_callback]
         )
 
         self.score = self.model.evaluate(x_test, y_test)
 
         return
 
-    def train_with_conv2d(self):
+    def train_with_conv2d(self,
+                          **kwargs):
 
         self.model_name = CONV2DCLASSIFIER_MODEL_NAME
 
@@ -567,8 +576,13 @@ class ClassificationTask:
                                                             stratify=self.y_ohe,
                                                             )
 
+        early_stopping_callback = EarlyStopping(monitor='loss', patience=5)
+        epochs = kwargs.get('epochs') if kwargs.get('epochs') else 100
+        if epochs < 10:
+            raise Exception('epochs must be >= 10')
+
         self.history = self.model.fit(x_train, y_train,
-                                      epochs=100,
+                                      epochs=epochs,
                                       batch_size=32,
                                       validation_split=0.2,
                                       shuffle=True
@@ -584,8 +598,8 @@ class ClassificationTask:
 
     def make_training_history_plot(self):
 
-        make_training_history_plot(history=self.history, metric='accuracy')
-        make_training_history_plot(history=self.history, metric='loss')
+        make_training_history_plot(history=self.history, metric='accuracy', model_name=self.model_name)
+        make_training_history_plot(history=self.history, metric='loss', model_name=self.model_name)
 
     def predict(self, x: np.ndarray):
         return self.model.predict(x)

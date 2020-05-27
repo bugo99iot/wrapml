@@ -30,6 +30,7 @@ from tensorflow.keras.metrics import Precision, Recall, Accuracy, SparseCategori
     TrueNegatives, TruePositives, FalseNegatives, FalsePositives
 
 from tensorflow.keras.callbacks import History
+from tensorflow.keras.callbacks import EarlyStopping
 
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 
