@@ -28,18 +28,17 @@ from wrapml.exceptions import ModelNotTrainableException
 # Parameters
 from wrapml.constants import DEFAULT_GRID_SEARCH_PARAMETERS, CLASSIFICATION_TYPE_BINARY, CLASSIFICATION_TYPE_MULTICLASS
 from wrapml.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
+from wrapml.constants import CONV2DCLASSIFIER_MODEL_NAME, LSTMCLASSIFIER_MODEL_NAME
 
 
 # todo HIGH PRIO:
 #  - add score given min probability for classifier which provide probability
 #  - add: refit best model when search all
-#  - process y when making prediction
+#  - process y and x when making prediction
 
 
 # todo MED PRIO:
-#  - linear and non linear SVC
 #  - add print plots (ROC curve, confusion matrix, overfit, underfit, plot to compare models)
-#  - check works with images without channels
 #  - fix labels encoding
 #  - class weight support
 #  - add CNN tensorflow and beyond + rescale image 255 / https://www.tensorflow.org/tutorials/images/classification
@@ -51,10 +50,6 @@ from wrapml.constants import DEFAULT_TEST_SIZE, DEFAULT_RANDOM_STATE
 #  - add cohen k-score for inter-annotators agreement
 #  - dd automatic overfit / underfit detection
 #  - feature selection
-
-# todo MAYBE
-#  - save best model + path
-#  - save report + path
 
 
 class ClassificationTask:
@@ -172,13 +167,13 @@ class ClassificationTask:
             self.x_dim2_shape = self.x_dim2.shape
             self.x_dim2_dim = len(self.x_dim2.shape)
 
-            self.x_dim3 = None
-            self.x_dim3_shape = None
-            self.x_dim3_dim = None
+            self.x_dim3 = self.x_dim2.reshape((self.x_dim2_shape[0], 1, 1))
+            self.x_dim3_shape = self.x_dim3.shape
+            self.x_dim3_dim = len(self.x_dim3.shape)
 
-            self.x_dim4 = None
-            self.x_dim4_shape = None
-            self.x_dim4_dim = None
+            self.x_dim4 = self.x_dim2.reshape((self.x_dim2_shape[0], 1, 1, 1))
+            self.x_dim4_shape = self.x_dim4.shape
+            self.x_dim4_dim = len(self.x_dim4.shape)
 
         if len(self.x_shape) == 2:
             # (n_samples, m), meaning n data points, each one with a vector measure
@@ -188,13 +183,13 @@ class ClassificationTask:
             self.x_dim2_shape = self.x_dim2.shape
             self.x_dim2_dim = len(self.x_dim2.shape)
 
-            self.x_dim3 = None
-            self.x_dim3_shape = None
-            self.x_dim3_dim = None
+            self.x_dim3 = self.x_dim2.reshape((self.x_dim2_shape[0], self.x_dim2_shape[1], 1))
+            self.x_dim3_shape = self.x_dim3.shape
+            self.x_dim3_dim = len(self.x_dim3.shape)
 
-            self.x_dim4 = None
-            self.x_dim4_shape = None
-            self.x_dim4_dim = None
+            self.x_dim4 = self.x_dim2.reshape((self.x_dim2_shape[0], self.x_dim2_shape[1], 1, 1))
+            self.x_dim4_shape = self.x_dim4.shape
+            self.x_dim4_dim = len(self.x_dim4.shape)
 
         elif len(self.x_shape) == 3:
             # (n_samples, m, n),
@@ -238,8 +233,8 @@ class ClassificationTask:
             raise Exception('This should never happen')
 
         self.x_dim2 = self.x_dim2.astype('float32')
-        self.x_dim3 = self.x_dim3.astype('float32') if self.x_dim3 is not None else None
-        self.x_dim4 = self.x_dim4.astype('float32') if self.x_dim4 is not None else None
+        self.x_dim3 = self.x_dim3.astype('float32')
+        self.x_dim4 = self.x_dim4.astype('float32')
 
         # todo: add rescale option
 
@@ -429,8 +424,7 @@ class ClassificationTask:
 
     # Tensorflow based
 
-    def train_with_lstm(self,
-                        print_report: bool = True):
+    def train_with_lstm(self):
 
         # todo:
         #  - add k-folds
@@ -438,7 +432,7 @@ class ClassificationTask:
         #  - add report
         #  - loss as binary crossentropy + 1 neuron sigmoid final layer when binary
 
-        self.model_name = 'LSTMClassifier'
+        self.model_name = LSTMCLASSIFIER_MODEL_NAME
 
         if self.x_dim3 is None:
             raise ModelNotTrainableException('Cannot train with {} given x shape'.format(self.model_name))
@@ -482,7 +476,7 @@ class ClassificationTask:
 
     def train_with_conv2d(self):
 
-        self.model_name = 'CNNClassifier'
+        self.model_name = CONV2DCLASSIFIER_MODEL_NAME
 
         if self.x_dim4 is None:
             raise ModelNotTrainableException('Cannot train with {} given x shape'.format(self.model_name))
@@ -524,8 +518,7 @@ class ClassificationTask:
         self.model.compile(
             loss='categorical_crossentropy',
             optimizer='adam',
-            metrics=metrics
-        )
+            metrics=metrics)
 
         x_train, x_test, y_train, y_test = train_test_split(self.x_dim4, self.y_ohe,
                                                             test_size=self.test_size,
@@ -533,13 +526,12 @@ class ClassificationTask:
                                                             stratify=self.y_ohe,
                                                             )
 
-        history = self.model.fit(
-            x_train, y_train,
-            epochs=100,
-            batch_size=32,
-            validation_split=0.2,
-            shuffle=True
-        )
+        history = self.model.fit(x_train, y_train,
+                                 epochs=100,
+                                 batch_size=32,
+                                 validation_split=0.2,
+                                 shuffle=True
+                                 )
 
         make_training_history_plot(history=history, metric='accuracy')
         make_training_history_plot(history=history, metric='loss')
@@ -582,6 +574,7 @@ class ClassificationTask:
     def _init_scoring(self):
         # todo: change scoring technique depending wther probelm is binary or multiclass
         logger.debug('returning 0 on precision score zerodivision')
+
         self.scoring_methods = {'accuracy_score': make_scorer(accuracy_score),
                                 'f1_score': make_scorer(f1_score, average=self.score_average_method),
                                 'precision_score': make_scorer(precision_score, average=self.score_average_method,

@@ -28,5 +28,7 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.metrics import Precision, Recall, Accuracy, SparseCategoricalAccuracy, \
     TrueNegatives, TruePositives, FalseNegatives, FalsePositives
 
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
+
 import tensorflow.keras.backend as K
 K.set_image_data_format('channels_last')
