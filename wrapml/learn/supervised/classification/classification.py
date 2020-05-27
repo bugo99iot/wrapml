@@ -386,6 +386,8 @@ class ClassificationTask:
 
         model_gridsearch.fit(self.x_dim2, self.y_dim1)
 
+        # todo: maybe make refit best model manually so that confusion matrix can be trusted
+
         for train_index, test_index in sss.split(self.x_dim2, self.y_dim1):
 
             x_train, x_test = self.x_dim2[train_index], self.x_dim2[test_index]
