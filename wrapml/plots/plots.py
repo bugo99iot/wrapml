@@ -3,10 +3,18 @@ from wrapml.imports.vanilla import List
 from wrapml.imports.science import np
 
 
-def make_training_history_plot(history, metric: str):
+def make_training_history_plot(history,
+                               metric: str,
+                               model_name: str = None):
+
+    if model_name:
+        title = '{} score - {}'.format(metric.capitalize(), model_name)
+    else:
+        title = '{} score'.format(metric.capitalize())
+
     plt.plot(history.history[metric])
     plt.plot(history.history[metric])
-    plt.title('Model {} score'.format(metric.capitalize()))
+    plt.title(title)
     plt.ylabel(metric.capitalize())
     plt.xlabel('Epoch')
     loc = 'center right' if 'loss' not in metric else 'upper right'

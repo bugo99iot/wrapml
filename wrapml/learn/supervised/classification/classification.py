@@ -1,5 +1,5 @@
 # Utils
-from wrapml.imports.vanilla import Dict, Optional, List
+from wrapml.imports.vanilla import Dict, Optional, List, pprint
 
 # DS
 from wrapml.imports.science import np, pd
@@ -16,6 +16,8 @@ from wrapml.imports.learn import MinMaxScaler, OneHotEncoder, to_categorical
 from wrapml.imports.learn import pickle, StratifiedShuffleSplit
 from wrapml.imports.learn import train_test_split
 from wrapml.imports.learn import GridSearchCV
+
+from wrapml.imports.learn import History
 
 # NN
 from wrapml.imports.learn import Sequential, Dense, Dropout, LSTM, Conv2D, MaxPooling2D, Flatten
@@ -86,6 +88,8 @@ class ClassificationTask:
         self.best_parameters_from_grid_search: Dict = {}
         self.parameter_combinations_searched: Optional[int] = None
 
+        self.history: Optional[History] = None
+
         # report
         self.report: Dict = {}
         self.small_report: Dict = {}
@@ -144,6 +148,7 @@ class ClassificationTask:
         self.n_classes: int = self.y_ohe.shape[1]
         # todo check it's string
         self.labels: List[str] = list(set([k[0] for k in self.y_dim2]))
+        self.labels.sort()
         if not (all(isinstance(k, int) for k in self.labels) or all(isinstance(k, str) for k in self.labels)
                 or all(isinstance(k, np.integer) for k in self.labels)):
             raise Exception('input labels must be int or str')
@@ -449,6 +454,16 @@ class ClassificationTask:
 
         self.report = report
 
+    def print_report(self):
+        if not self.report:
+            raise Exception('Cannot print report, report has not been instantiated')
+        pprint(self.report)
+
+    def print_small_report(self):
+        if not self.report:
+            raise Exception('Cannot print small report, small report has not been instantiated')
+        pprint(self.small_report)
+
     # Tensorflow based
 
     def train_with_lstm(self):
@@ -486,16 +501,13 @@ class ClassificationTask:
                                                             stratify=self.y_ohe,
                                                             )
 
-        history = self.model.fit(
+        self.history = self.model.fit(
             x_train, y_train,
             epochs=20,
             batch_size=32,
             validation_split=0.2,
             shuffle=True
         )
-
-        make_training_history_plot(history=history, metric='accuracy')
-        make_training_history_plot(history=history, metric='loss')
 
         self.score = self.model.evaluate(x_test, y_test)
 
@@ -553,15 +565,12 @@ class ClassificationTask:
                                                             stratify=self.y_ohe,
                                                             )
 
-        history = self.model.fit(x_train, y_train,
-                                 epochs=100,
-                                 batch_size=32,
-                                 validation_split=0.2,
-                                 shuffle=True
-                                 )
-
-        make_training_history_plot(history=history, metric='accuracy')
-        make_training_history_plot(history=history, metric='loss')
+        self.history = self.model.fit(x_train, y_train,
+                                      epochs=100,
+                                      batch_size=32,
+                                      validation_split=0.2,
+                                      shuffle=True
+                                      )
 
         self.score = self.model.evaluate(x_test, y_test)
 
@@ -570,6 +579,11 @@ class ClassificationTask:
     def _train_with_tensorflow(self):
 
         return
+
+    def make_training_history_plot(self):
+
+        make_training_history_plot(history=self.history, metric='accuracy')
+        make_training_history_plot(history=self.history, metric='loss')
 
     def predict(self, x: np.ndarray):
         return self.model.predict(x)
@@ -599,6 +613,7 @@ class ClassificationTask:
         self.report = {}
         self.small_report = {}
         self.confusion_matrix = None
+        self.history = None
 
     def _init_scoring(self):
         # todo: change scoring technique depending wther probelm is binary or multiclass
