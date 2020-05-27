@@ -9,6 +9,7 @@ import pickle
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score, make_scorer, \
     roc_auc_score, matthews_corrcoef, cohen_kappa_score, zero_one_loss
+from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC

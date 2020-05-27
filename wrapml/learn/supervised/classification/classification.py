@@ -1,15 +1,16 @@
 # Utils
-from wrapml.imports.vanilla import Dict, Optional
+from wrapml.imports.vanilla import Dict, Optional, List
 
 # DS
 from wrapml.imports.science import np, pd
-from wrapml.plots import make_training_history_plot
+from wrapml.plots import make_training_history_plot, make_confusion_plot
 
 # ML
 from wrapml.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
     XGBClassifier
 from wrapml.imports.learn import f1_score, accuracy_score, precision_score, recall_score, matthews_corrcoef, \
     cohen_kappa_score, roc_auc_score, zero_one_loss, make_scorer
+from wrapml.imports.learn import confusion_matrix as make_confusion_matrix
 from wrapml.imports.learn import MinMaxScaler, OneHotEncoder, to_categorical
 
 from wrapml.imports.learn import pickle, StratifiedShuffleSplit
@@ -141,6 +142,11 @@ class ClassificationTask:
         self.y_ohe_dim = len(self.y_ohe.shape)
 
         self.n_classes: int = self.y_ohe.shape[1]
+        # todo check it's string
+        self.labels: List[str] = list(set([k[0] for k in self.y_dim2]))
+        if not (all(isinstance(k, int) for k in self.labels) or all(isinstance(k, str) for k in self.labels)
+                or all(isinstance(k, np.integer) for k in self.labels)):
+            raise Exception('input labels must be int or str')
 
         # todo: add multi-label support
         if self.n_classes > 2:
@@ -375,6 +381,18 @@ class ClassificationTask:
 
         model_gridsearch.fit(self.x_dim2, self.y_dim1)
 
+        for train_index, test_index in sss.split(self.x_dim2, self.y_dim1):
+
+            x_train, x_test = self.x_dim2[train_index], self.x_dim2[test_index]
+            y_train, y_test = self.y_dim1[train_index], self.y_dim1[test_index]
+            continue
+
+        # get one test split for confusion matrix
+        y_test_pred = model_gridsearch.best_estimator_.predict(x_test)
+
+        self.confusion_matrix: np.ndarray = make_confusion_matrix(y_true=y_test, y_pred=y_test_pred,
+                                                                  labels=self.labels)
+
         index_of_best_model = model_gridsearch.best_index_
         results = model_gridsearch.cv_results_
 
@@ -394,6 +412,7 @@ class ClassificationTask:
         self.best_parameters_from_grid_search = model_gridsearch.best_params_
         self.parameter_combinations_searched = len(results['mean_fit_time'])
         self.model = model_gridsearch.best_estimator_
+        self.model_name = type(model).__name__
         self.best_model_parameters = self.model.get_params()
 
         self.fit_time_best_model_k_folds_s = round(float(model_gridsearch.refit_time_), 4)
@@ -403,6 +422,14 @@ class ClassificationTask:
                                                                    self.fit_time_total_s))
 
         self._calculate_report_for_model_keras()
+
+    def make_confusion_plot(self, normalize: bool = False):
+        if self.confusion_matrix is None:
+            raise Exception('Cannot make confusion plot, confusion matrix has not been instantiated')
+        make_confusion_plot(confusion_matrix=self.confusion_matrix,
+                            labels=self.labels,
+                            normalize=normalize,
+                            model_name=self.model_name)
 
     def _calculate_report_for_model_keras(self):
 
@@ -570,6 +597,8 @@ class ClassificationTask:
         self.best_parameters_from_grid_search = {}
         self.parameter_combinations_searched = None
         self.report = {}
+        self.small_report = {}
+        self.confusion_matrix = None
 
     def _init_scoring(self):
         # todo: change scoring technique depending wther probelm is binary or multiclass

@@ -23,7 +23,7 @@ class TestTrainClassificationModelMxM(TestCase):
 
     def test_random_forests(self):
 
-        self.tm.train_with_random_forests(do_grid_search=True)
+        self.tm.train_with_random_forests(do_grid_search=False)
         score = self.tm.score
         accuracy = round(score['test']['accuracy_score_mean'], 2)
         self.assertIsNotNone(accuracy)
@@ -61,12 +61,14 @@ class TestTrainClassificationModelIris(TestCase):
     def test_iris(self):
 
         tm = ClassificationTask(x=self.x, y=self.y)
+        tm.n_jobs = 1
 
         tm.k_fold_cross_validation = 2
 
         tm.search_estimator()
 
         self.assertEqual('SVC', tm.report['best_estimator']['best_estimator_name'])
+        tm.make_confusion_plot(normalize=True)
 
 
 class TestTrainClassificationModelDigits(TestCase):
