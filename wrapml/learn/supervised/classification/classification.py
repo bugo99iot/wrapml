@@ -181,7 +181,7 @@ class ClassificationTask:
 
         # todo: add possibility to convert non-images into images to run 2D CNN on it
 
-        if len(self.x_shape) == 1:
+        if self.x_dim == 1:
             # (n_samples, 1), meaning n data points, each one with a scalar measure,
             # e.g. measuring temperature at timestamps
 
@@ -197,7 +197,7 @@ class ClassificationTask:
             self.x_dim4_shape = self.x_dim4.shape
             self.x_dim4_dim = len(self.x_dim4.shape)
 
-        if len(self.x_shape) == 2:
+        elif self.x_dim == 2:
             # (n_samples, m), meaning n data points, each one with a vector measure
             # e.g. measuring temperature, wind, precipitation at timestamps
 
@@ -213,7 +213,7 @@ class ClassificationTask:
             self.x_dim4_shape = self.x_dim4.shape
             self.x_dim4_dim = len(self.x_dim4.shape)
 
-        elif len(self.x_shape) == 3:
+        elif self.x_dim == 3:
             # (n_samples, m, n),
             # meaning: either n data points, each one with multiple vector measures
             # e.g. accelerometer in 3d at timestamps
@@ -232,7 +232,7 @@ class ClassificationTask:
             self.x_dim4_shape = self.x_dim4.shape
             self.x_dim4_dim = len(self.x_dim4.shape)
 
-        elif len(self.x_shape) == 4:
+        elif self.x_dim == 4:
             # (n_samples, xdim, ydim, n_channels)
             # image with channels last
 
@@ -252,7 +252,7 @@ class ClassificationTask:
             self.x_dim3_dim = len(self.x_dim3.shape)
 
         else:
-            raise Exception('This should never happen')
+            raise Exception('x_dim not allowed')
 
         self.x_dim2 = self.x_dim2.astype('float32')
         self.x_dim3 = self.x_dim3.astype('float32')
@@ -448,9 +448,9 @@ class ClassificationTask:
 
     def make_roc_plot(self, pos_label: int or str):
         if self.classification_type != CLASSIFICATION_TYPE_BINARY:
-            raise Exception('roc curve supported for binary classification problems only')
+            raise Exception('roc plot supported for binary classification problems only')
         if self.y_test_pred_proba is None:
-            raise Exception('cannot plot roc curve for model {}, probability not available'.format(self.model_name))
+            raise Exception('cannot make roc plot for model {}, probability not available'.format(self.model_name))
 
         make_roc_plot(y_test=self.y_test, y_test_pred_prob=self.y_test_pred_proba,
                       pos_label=pos_label)

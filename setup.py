@@ -9,7 +9,7 @@ with pathlib.Path('requirements.txt').open() as requirements_txt:
 with open('README.md', encoding='utf-8') as f:
     readme = f.read()
 
-version = '0.0.15'
+version = '0.0.16'
 
 setup(name='wrapml',
       packages=find_packages(),
