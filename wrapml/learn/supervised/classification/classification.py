@@ -9,7 +9,7 @@ from wrapml.plots import make_training_history_plot, make_confusion_plot, make_r
 from wrapml.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
     XGBClassifier
 from wrapml.imports.learn import f1_score, accuracy_score, precision_score, recall_score, matthews_corrcoef, \
-    cohen_kappa_score, roc_auc_score, zero_one_loss, make_scorer
+    cohen_kappa_score, roc_auc_score, zero_one_loss, auc, make_scorer
 from wrapml.imports.learn import confusion_matrix as make_confusion_matrix
 
 from wrapml.imports.learn import pickle, StratifiedShuffleSplit
@@ -25,7 +25,8 @@ from wrapml.imports.learn import one_hot
 
 # NN
 from wrapml.imports.learn import Sequential, Dense, Dropout, LSTM, Conv2D, MaxPooling2D, Flatten
-from wrapml.imports.learn import Precision, Recall, Accuracy, SparseCategoricalAccuracy
+from wrapml.imports.learn import tf_precision_score, tf_recall_score, tf_f1_score_funk, tf_matthews_score_funk, tf_auc_score
+from wrapml.imports.learn import KerasClassifier as TensorflowToKerasClassifier
 from wrapml.imports.learn import one_hot
 from wrapml.imports.learn import K
 
@@ -88,6 +89,7 @@ class ClassificationTask:
         self.return_train_score: bool = True
         self.scoring_metrics_keras: Dict = {}
         self.scoring_metrics_tensorflow: Dict = {}
+        self.scoring_metrics_tensorflow_ordered: List = []
         self.score_criteria_for_best_model_fit = 'f1_score'
 
         # model
@@ -424,12 +426,12 @@ class ClassificationTask:
         for j in ['train', 'test']:
             set_score = {}
             for k in self.scoring_metrics_keras.keys():
-                set_score[k + '_mean'] = round(float(results['mean_' + j + '_' + k][index_of_best_model]), self.score_dp)
+                set_score[k] = round(float(results['mean_' + j + '_' + k][index_of_best_model]), self.score_dp)
                 set_score[k + '_std'] = round(float(results['std_' + j + '_' + k][index_of_best_model]), self.score_dp)
             self.score[j] = set_score
 
         self.score['best_score_criteria'] = score_criteria_for_best_model_fit
-        self.score['best_score'] = self.score['test'][score_criteria_for_best_model_fit + '_mean']
+        self.score['best_score'] = self.score['test'][score_criteria_for_best_model_fit]
         if round(float(model_gridsearch.best_score_), self.score_dp) != self.score['best_score']:
             raise Exception('could not identify best score')
 
@@ -548,6 +550,8 @@ class ClassificationTask:
             input_shape = (img_rows, img_cols, 1)
         """
 
+        # todo: if image side too small, this will throw and error, set image side min 30
+
         model = Sequential(name=self.model_name)
         model.add(Conv2D(filters=32,
                          kernel_size=(3, 3),
@@ -589,29 +593,38 @@ class ClassificationTask:
                                epochs: Optional[int],
                                callbacks: Optional[List],
                                batch_size: Optional[int],
+                               do_grid_search: bool = False,
+                               grid_search_parameters: Optional[Dict] = None,
+                               score_criteria_for_best_model_fit: Optional[str] = None
                                ):
+
         self._init_training()
 
         self.model_name = model_name
         self.model = model
+        logger.info('Training with {}.'.format(self.model_name))
 
         self.model.summary()
-
         self.model.compile(
             loss='categorical_crossentropy',
             optimizer='adam',
-            metrics=self.scoring_metrics_tensorflow
+            metrics=[self.scoring_metrics_tensorflow[k] for k in self.scoring_metrics_tensorflow_ordered]
         )
 
-        x_train, x_test, y_train, y_test = train_test_split(x,
-                                                            y,
-                                                            test_size=self.test_size,
-                                                            random_state=self.random_state,
-                                                            stratify=self.y_ohe,
-                                                            )
+        sss = StratifiedShuffleSplit(n_splits=self.k_fold_cross_validation,
+                                     test_size=self.test_size,
+                                     random_state=self.random_state)
 
+        # todo: 1 fold only here for now, add n folds
+        for train_index, test_index in sss.split(x, y):
+
+            self.x_train, self.x_test = x[train_index], x[test_index]
+            self.y_train, self.y_test = y[train_index], y[test_index]
+            continue
+
+        # todo: calculate fit time, keep 4 dp
         self.history = self.model.fit(
-            x_train, y_train,
+            self.x_train, self.y_train,
             epochs=epochs,
             batch_size=batch_size,
             validation_split=0.2,
@@ -619,11 +632,16 @@ class ClassificationTask:
             callbacks=callbacks
         )
 
-        self.score = self.model.evaluate(x_test, y_test)
+        test_score = self.model.evaluate(self.x_test, self.y_test)
+
+        self.score['test'] = {}
+
+        for item in self.scoring_metrics_tensorflow_ordered:
+            self.score['test'][item] = round(test_score[self.scoring_metrics_tensorflow_ordered.index(item)+1], self.score_dp)
 
         # get back list of original labels, e.g. ['cat', 'dog', etc...]
-        y_test_labels = [k[0] for k in self.ohe.inverse_transform(y_test)]
-        y_test_pred = self.model.predict(x_test)
+        y_test_labels = [k[0] for k in self.ohe.inverse_transform(self.y_test)]
+        y_test_pred = self.model.predict(self.x_test)
         y_test_pred_labels = [k[0] for k in self.ohe.inverse_transform(y_test_pred)]
 
         self.confusion_matrix: np.ndarray = make_confusion_matrix(y_true=y_test_labels,
@@ -642,7 +660,16 @@ class ClassificationTask:
 
     def _calculate_report_for_model_tensorflow(self):
         # todo: calculate report
+
         self.report = self.score
+
+        for i in ['n_classes',
+                  'classification_type',
+                  'model_name',
+                  ]:
+            self.report[i] = self.__getattribute__(i)
+
+        return self.report
 
     def predict(self, x: np.ndarray):
         return self.model.predict(x)
@@ -686,11 +713,29 @@ class ClassificationTask:
                                       'precision_score': make_scorer(precision_score, average=self.score_average_method,
                                                                      zero_division=0),
                                       'recall_score': make_scorer(recall_score, average=self.score_average_method),
+                                      # https://stackoverflow.com/questions/49061575/why-when-i-use-gridsearchcv-with-roc-auc-scoring-the-score-is-different-for-gri
+                                      #'auc_score': make_scorer(roc_auc_score, multi_class='ovr',
+                                      #                         labels=self.labels,
+                                      #                         greater_is_better=True,
+                                      #                         needs_threshold=True
+                                      #                         ),
                                       'matthews_score': make_scorer(matthews_corrcoef),
-                                      'zero_one_loss_score': make_scorer(zero_one_loss),
-                                      # 'roc_auc_score': make_scorer(roc_auc_score, average='macro', multi_class='ovo')
+                                      # 'zero_one_loss_score': make_scorer(zero_one_loss),
                                       }
-        self.scoring_metrics_tensorflow = ['accuracy', Precision(thresholds=0.5), Recall(thresholds=0.5)]
+        self.scoring_metrics_tensorflow = {'accuracy_score': 'accuracy',
+                                           'precision_score': tf_precision_score(),
+                                           'recall_score': tf_recall_score(),
+                                           'f1_score': tf_f1_score_funk,
+                                           'matthews_score': tf_matthews_score_funk,
+                                           'auc_score': tf_auc_score()
+                                           }
+
+        self.scoring_metrics_tensorflow_ordered = ['accuracy_score',
+                                                   'precision_score',
+                                                   'recall_score',
+                                                   'f1_score',
+                                                   # 'auc_score',
+                                                   'matthews_score']
 
     def search_estimator(self,
                          do_grid_search: bool = False):

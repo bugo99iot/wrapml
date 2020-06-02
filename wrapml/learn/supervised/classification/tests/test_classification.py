@@ -6,10 +6,10 @@ from wrapml.learn.supervised.classification import ClassificationTask
 from wrapml import DataGenerator
 
 
-class TestImageClassificationGrayScale(TestCase):
+class TestImageGrayScaleClassificationTask(TestCase):
 
     dg = DataGenerator(n_classes=3,
-                       x_shape=(100, 30, 30, 1))
+                       x_shape=(100, 40, 40, 1))
     x, y = dg.xy()
 
     ct = ClassificationTask(x=x, y=y)
@@ -21,7 +21,7 @@ class TestImageClassificationGrayScale(TestCase):
 
         self.ct.train_with_knn()
         score = self.ct.score
-        accuracy = round(score['test']['accuracy_score_mean'], 2)
+        accuracy = round(score['test']['accuracy_score'], 2)
         self.assertEqual(0.94, accuracy)
         report = self.ct.report
         small_report = self.ct.small_report
@@ -32,7 +32,7 @@ class TestImageClassificationGrayScale(TestCase):
 
         self.ct.train_with_random_forests()
         score = self.ct.score
-        accuracy = round(score['test']['accuracy_score_mean'], 2)
+        accuracy = round(score['test']['accuracy_score'], 2)
         self.assertEqual(0.69, accuracy)
         report = self.ct.report
         small_report = self.ct.small_report
@@ -43,7 +43,7 @@ class TestImageClassificationGrayScale(TestCase):
 
         self.ct.train_with_xgboost()
         score = self.ct.score
-        accuracy = round(score['test']['accuracy_score_mean'], 2)
+        accuracy = round(score['test']['accuracy_score'], 2)
         self.assertEqual(0.47, accuracy)
         report = self.ct.report
         small_report = self.ct.small_report
@@ -56,7 +56,7 @@ class TestImageClassificationGrayScale(TestCase):
         small_report = self.ct.small_report
 
 
-class TestScalarClassification(TestCase):
+class TestScalarClassificationTask(TestCase):
 
     dg = DataGenerator(n_classes=2,
                        x_shape=(120, ))
@@ -71,7 +71,7 @@ class TestScalarClassification(TestCase):
 
         self.ct.train_with_knn()
         score = self.ct.score
-        accuracy = round(score['test']['accuracy_score_mean'], 2)
+        accuracy = round(score['test']['accuracy_score'], 2)
         self.assertEqual(0.58, accuracy)
         report = self.ct.report
         small_report = self.ct.small_report
@@ -82,7 +82,7 @@ class TestScalarClassification(TestCase):
 
         self.ct.train_with_knn(do_grid_search=True)
         score = self.ct.score
-        accuracy = round(score['test']['accuracy_score_mean'], 2)
+        accuracy = round(score['test']['accuracy_score'], 2)
         self.assertEqual(0.64, accuracy)
         report = self.ct.report
         small_report = self.ct.small_report
@@ -93,7 +93,7 @@ class TestScalarClassification(TestCase):
 
         self.ct.train_with_random_forests()
         score = self.ct.score
-        accuracy = round(score['test']['accuracy_score_mean'], 2)
+        accuracy = round(score['test']['accuracy_score'], 2)
         self.assertEqual(0.6, accuracy)
         report = self.ct.report
         small_report = self.ct.small_report
@@ -104,7 +104,7 @@ class TestScalarClassification(TestCase):
 
         self.ct.train_with_xgboost()
         score = self.ct.score
-        accuracy = round(score['test']['accuracy_score_mean'], 2)
+        accuracy = round(score['test']['accuracy_score'], 2)
         self.assertEqual(0.6, accuracy)
         report = self.ct.report
         small_report = self.ct.small_report
@@ -125,9 +125,9 @@ class TestScalarClassification(TestCase):
         small_report = self.ct.small_report
         self.ct.make_confusion_plot()
         self.ct.make_roc_plot(pos_label=self.ct.labels[0])
-        
 
-class TestTimeseriesClassifier(TestCase):
+
+class TestTimeseriesClassificationTask(TestCase):
     
     dg = DataGenerator(n_classes=2,
                        x_shape=(120, 30))
@@ -138,8 +138,11 @@ class TestTimeseriesClassifier(TestCase):
     ct.k_fold_cross_validation = 2
     ct.n_jobs = 1
 
+    # todo: coming soon, include lstm
+
+
 @skip
-class TestClassificationWine(TestCase):
+class TestWineClassificationTask(TestCase):
     from sklearn.datasets import load_wine
 
     x, y = load_wine(return_X_y=True)
@@ -157,7 +160,7 @@ class TestClassificationWine(TestCase):
         self.assertEqual('RandomForestClassifier', ct.report['best_estimator']['best_estimator_name'])
 
 @skip
-class TestClassificationIris(TestCase):
+class TestIrisClassificationTask(TestCase):
     from sklearn.datasets import load_iris
 
     x, y = load_iris(return_X_y=True)
@@ -177,7 +180,7 @@ class TestClassificationIris(TestCase):
 
 
 @skip
-class TestClassificationDigits(TestCase):
+class TestDigitsClassificationTask(TestCase):
     from sklearn.datasets import load_digits
 
     x, y = load_digits(return_X_y=True)
@@ -196,7 +199,7 @@ class TestClassificationDigits(TestCase):
 
 
 @skip
-class TestClassificationBreastCancer(TestCase):
+class TestBreastCancerClassificationTask(TestCase):
     from sklearn.datasets import load_breast_cancer
 
     x, y = load_breast_cancer(return_X_y=True)
