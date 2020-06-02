@@ -22,7 +22,7 @@ def main():
 
         row = [[float(val)]*p]*m
 
-        label = val  # todo: convert categorical
+        label = 'good' if val == 1 else 'bad'
 
         x.append(row)
         y.append(label)
@@ -33,7 +33,6 @@ def main():
     assert x.shape == (n, m, p)
     assert y.shape == (n, 1)
 
-
     do_rescale = True
     if do_rescale:
         x_shape = x.shape
@@ -43,11 +42,14 @@ def main():
         x = x.reshape(x_shape)
 
     tcm = ClassificationTask(x=x, y=y)
+    tcm.n_jobs = 1
 
     tcm.train_with_mlp()
     print(tcm.report)
+    tcm.make_roc_plot(pos_label='good')
 
-    tcm.train_with_lstm()
+    tcm.train_with_lstm(epochs=10)
+    tcm.make_confusion_plot()
 
     return
 

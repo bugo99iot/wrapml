@@ -1,6 +1,10 @@
-from wrapml.imports.science import plt
 from wrapml.imports.vanilla import List
 from wrapml.imports.science import np
+from wrapml.imports.science import plt
+from wrapml.imports.learn import roc_curve, auc, plot_roc_curve
+
+cmap = plt.cm.Blues
+np.set_printoptions(precision=2)
 
 
 def make_training_history_plot(history,
@@ -30,10 +34,6 @@ def make_confusion_plot(confusion_matrix: np.ndarray,
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
     """
-
-    cmap = plt.cm.Blues
-
-    np.set_printoptions(precision=2)
     if model_name:
         title = 'Confusion Plot - {}'.format(model_name)
     else:
@@ -73,4 +73,24 @@ def make_confusion_plot(confusion_matrix: np.ndarray,
                     color="white" if confusion_matrix[i, j] > thresh else "black")
     # fig.tight_layout()
     # return ax
+    plt.show()
+
+
+def make_roc_plot(y_test_pred_prob: np.ndarray,
+                  y_test: np.ndarray,
+                  pos_label: int or str):
+
+    y_test_pred_prob_max = np.array([np.amax(k) for k in y_test_pred_prob])
+
+    fpr, tpr, threshold = roc_curve(y_test, y_test_pred_prob_max, pos_label=pos_label)
+    roc_auc = auc(fpr, tpr)
+
+    plt.title('Receiver Operating Characteristic')
+    plt.plot(fpr, tpr, 'b', label='AUC = %0.2f' % roc_auc)
+    plt.legend(loc='lower right')
+    plt.plot([0, 1], [0, 1], 'r--')
+    plt.xlim([0, 1])
+    plt.ylim([0, 1])
+    plt.ylabel('True Positive Rate')
+    plt.xlabel('False Positive Rate')
     plt.show()

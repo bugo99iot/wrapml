@@ -3,7 +3,7 @@ from wrapml.imports.vanilla import Dict, Optional, List, pprint
 
 # DS
 from wrapml.imports.science import np, pd
-from wrapml.plots import make_training_history_plot, make_confusion_plot
+from wrapml.plots import make_training_history_plot, make_confusion_plot, make_roc_plot
 
 # ML
 from wrapml.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
@@ -11,7 +11,6 @@ from wrapml.imports.learn import RandomForestClassifier, KNeighborsClassifier, A
 from wrapml.imports.learn import f1_score, accuracy_score, precision_score, recall_score, matthews_corrcoef, \
     cohen_kappa_score, roc_auc_score, zero_one_loss, make_scorer
 from wrapml.imports.learn import confusion_matrix as make_confusion_matrix
-from wrapml.imports.learn import MinMaxScaler, OneHotEncoder, to_categorical
 
 from wrapml.imports.learn import pickle, StratifiedShuffleSplit
 from wrapml.imports.learn import train_test_split
@@ -20,9 +19,14 @@ from wrapml.imports.learn import GridSearchCV
 from wrapml.imports.learn import History
 from wrapml.imports.learn import EarlyStopping
 
+# Pre-processing
+from wrapml.imports.learn import MinMaxScaler, OneHotEncoder, to_categorical
+from wrapml.imports.learn import one_hot
+
 # NN
 from wrapml.imports.learn import Sequential, Dense, Dropout, LSTM, Conv2D, MaxPooling2D, Flatten
 from wrapml.imports.learn import Precision, Recall, Accuracy, SparseCategoricalAccuracy
+from wrapml.imports.learn import one_hot
 from wrapml.imports.learn import K
 
 # Internal
@@ -36,9 +40,10 @@ from wrapml.constants import CONV2DCLASSIFIER_MODEL_NAME, LSTMCLASSIFIER_MODEL_N
 
 
 # todo HIGH PRIO:
-#  - add score given min probability for classifier which provide probability
-#  - add: refit best model when search all
-#  - process y and x when making prediction
+#  - add refit best model when search all
+#  - add get confusion matrix from refitted model in sklearn
+#  - preprocess y and x when making prediction
+#  - option to use / not use OHE
 
 
 # todo MED PRIO:
@@ -54,6 +59,8 @@ from wrapml.constants import CONV2DCLASSIFIER_MODEL_NAME, LSTMCLASSIFIER_MODEL_N
 #  - add cohen k-score for inter-annotators agreement
 #  - dd automatic overfit / underfit detection
 #  - feature selection
+#  - add score given min probability for classifier which provide probability
+
 
 
 class ClassificationTask:
@@ -78,7 +85,8 @@ class ClassificationTask:
         self.score_average_method: str = 'weighted'
         self.do_grid_search: bool = False
         self.return_train_score: bool = True
-        self.scoring_methods: Dict = {}
+        self.scoring_metrics_keras: Dict = {}
+        self.scoring_metrics_tensorflow: Dict = {}
         self.score_criteria_for_best_model_fit = 'f1_score'
 
         # model
@@ -121,7 +129,7 @@ class ClassificationTask:
         self.y_dim = len(self.y_shape)
 
         if self.y_dim not in (1, 2) or self.y_shape[0] < 10 or (self.y_dim == 2 and self.y_shape[1] != 1):
-            raise Exception('y should be a numpy array with shape (n,) or (n, 1), n >= 10')
+            raise Exception('y should be a numpy array with shape (n,) or (n, 1), n >= 10 (multi-label is not supported)')
 
         if self.y_dim == 1:
             self.y_dim1 = self.y
@@ -140,16 +148,18 @@ class ClassificationTask:
 
         # at this point, self.y has shape (n, 1), n >= 10
 
-        self.ohe = OneHotEncoder(sparse=False, categories='auto')
+        # self.labels: List[str] = list(set([k for k in self.y_dim1]))
+        # self.labels.sort()
+
+        self.ohe = OneHotEncoder(categories='auto', sparse=False)
         self.y_ohe = self.ohe.fit_transform(self.y_dim2)
+        self.labels = list(self.ohe.categories_[0])
 
         self.y_ohe_shape = self.y_ohe.shape
         self.y_ohe_dim = len(self.y_ohe.shape)
 
-        self.n_classes: int = self.y_ohe.shape[1]
-        # todo check it's string
-        self.labels: List[str] = list(set([k[0] for k in self.y_dim2]))
-        self.labels.sort()
+        self.n_classes: int = len(self.labels)  # or = self.y_ohe.shape[1]
+
         if not (all(isinstance(k, int) for k in self.labels) or all(isinstance(k, str) for k in self.labels)
                 or all(isinstance(k, np.integer) for k in self.labels)):
             raise Exception('input labels must be int or str')
@@ -249,6 +259,9 @@ class ClassificationTask:
         self.x_dim4 = self.x_dim4.astype('float32')
 
         # todo: add rescale option
+
+        self.x_train, self.y_train, self.x_test, self.y_test = None, None, None, None
+        self.y_test_pred, self.y_test_pred_proba = None, None
 
     # Keras based
 
@@ -375,12 +388,10 @@ class ClassificationTask:
                                      test_size=self.test_size,
                                      random_state=self.random_state)
 
-        self._init_scoring()
-
         model_gridsearch = GridSearchCV(estimator=model,
                                         param_grid=grid_search_parameters,
                                         n_jobs=self.n_jobs,
-                                        scoring=self.scoring_methods,
+                                        scoring=self.scoring_metrics_keras,
                                         refit=score_criteria_for_best_model_fit,
                                         cv=sss,
                                         return_train_score=True)
@@ -391,14 +402,18 @@ class ClassificationTask:
 
         for train_index, test_index in sss.split(self.x_dim2, self.y_dim1):
 
-            x_train, x_test = self.x_dim2[train_index], self.x_dim2[test_index]
-            y_train, y_test = self.y_dim1[train_index], self.y_dim1[test_index]
+            self.x_train, self.x_test = self.x_dim2[train_index], self.x_dim2[test_index]
+            self.y_train, self.y_test = self.y_dim1[train_index], self.y_dim1[test_index]
             continue
 
         # get one test split for confusion matrix
-        y_test_pred = model_gridsearch.best_estimator_.predict(x_test)
+        self.y_test_pred = model_gridsearch.best_estimator_.predict(self.x_test)
+        try:
+            self.y_test_pred_proba = model_gridsearch.best_estimator_.predict_proba(self.x_test)
+        except:
+            self.y_test_pred_proba = None
 
-        self.confusion_matrix: np.ndarray = make_confusion_matrix(y_true=y_test, y_pred=y_test_pred,
+        self.confusion_matrix: np.ndarray = make_confusion_matrix(y_true=self.y_test, y_pred=self.y_test_pred,
                                                                   labels=self.labels)
 
         index_of_best_model = model_gridsearch.best_index_
@@ -407,7 +422,7 @@ class ClassificationTask:
         # let's parse score for best model, mean means mean of k-folds
         for j in ['train', 'test']:
             set_score = {}
-            for k in self.scoring_methods.keys():
+            for k in self.scoring_metrics_keras.keys():
                 set_score[k + '_mean'] = round(float(results['mean_' + j + '_' + k][index_of_best_model]), self.score_dp)
                 set_score[k + '_std'] = round(float(results['std_' + j + '_' + k][index_of_best_model]), self.score_dp)
             self.score[j] = set_score
@@ -430,6 +445,15 @@ class ClassificationTask:
                                                                    self.fit_time_total_s))
 
         self._calculate_report_for_model_keras()
+
+    def make_roc_plot(self, pos_label: int or str):
+        if self.classification_type != CLASSIFICATION_TYPE_BINARY:
+            raise Exception('roc curve supported for binary classification problems only')
+        if self.y_test_pred_proba is None:
+            raise Exception('cannot plot roc curve for model {}, probability not available'.format(self.model_name))
+
+        make_roc_plot(y_test=self.y_test, y_test_pred_prob=self.y_test_pred_proba,
+                      pos_label=pos_label)
 
     def make_confusion_plot(self, normalize: bool = False):
         if self.confusion_matrix is None:
@@ -478,57 +502,37 @@ class ClassificationTask:
         #  - add report
         #  - loss as binary crossentropy + 1 neuron sigmoid final layer when binary
 
-        self.model_name = LSTMCLASSIFIER_MODEL_NAME
+        model_name = LSTMCLASSIFIER_MODEL_NAME
 
-        if self.x_dim3 is None:
-            raise ModelNotTrainableException('Cannot train with {} given x shape'.format(self.model_name))
+        model = Sequential(name=self.model_name)
+        model.add(LSTM(units=32, input_shape=(self.x_dim3_shape[1], self.x_dim3_shape[2])))
+        model.add(Dropout(rate=0.5))
+        model.add(Dense(units=100, activation='relu'))
+        model.add(Dense(self.n_classes, activation='softmax'))
 
-        self.model = Sequential(name=self.model_name)
-        self.model.add(LSTM(units=32, input_shape=(self.x_dim3_shape[1], self.x_dim3_shape[2])))
-        self.model.add(Dropout(rate=0.5))
-        self.model.add(Dense(units=100, activation='relu'))
-        self.model.add(Dense(self.n_classes, activation='softmax'))
-
-        self.model.summary()
-
-        metrics = ['accuracy', Precision(thresholds=0.5), Recall(thresholds=0.5)]
-
-        self.model.compile(
-            loss='categorical_crossentropy',
-            optimizer='adam',
-            metrics=metrics
-        )
-
-        x_train, x_test, y_train, y_test = train_test_split(self.x_dim3, self.y_ohe,
-                                                            test_size=self.test_size,
-                                                            random_state=self.random_state,
-                                                            stratify=self.y_ohe,
-                                                            )
-
-        early_stopping_callback = EarlyStopping(monitor='loss', patience=5)
+        # parse kwargs
+        early_stopping_callback = EarlyStopping(monitor='loss', patience=10) if kwargs.get('early_stopping') else None
         epochs = kwargs.get('epochs') if kwargs.get('epochs') else 100
         if epochs < 10:
             raise Exception('epochs must be >= 10')
+        batch_size = kwargs.get('batch_size') if kwargs.get('batch_size') else 32
 
-        self.history = self.model.fit(
-            x_train, y_train,
-            epochs=epochs,
-            batch_size=32,
-            validation_split=0.2,
-            shuffle=True,
-            callbacks=[early_stopping_callback]
-        )
+        callbacks = [early_stopping_callback] if early_stopping_callback else []
 
-        self.score = self.model.evaluate(x_test, y_test)
-
-        return
+        self._train_with_tensorflow(model=model,
+                                    model_name=model_name,
+                                    epochs=epochs,
+                                    callbacks=callbacks,
+                                    batch_size=batch_size,
+                                    x=self.x_dim3,
+                                    y=self.y_ohe)
 
     def train_with_conv2d(self,
                           **kwargs):
 
-        self.model_name = CONV2DCLASSIFIER_MODEL_NAME
+        model_name = CONV2DCLASSIFIER_MODEL_NAME
 
-        if self.x_dim4 is None:
+        if self.x_dim4_shape[1] != self.x_dim4_shape[2]:
             raise ModelNotTrainableException('Cannot train with {} given x shape'.format(self.model_name))
 
         # todo:
@@ -545,54 +549,90 @@ class ClassificationTask:
             input_shape = (img_rows, img_cols, 1)
         """
 
-        self.model = Sequential(name=self.model_name)
-        self.model.add(Conv2D(filters=32,
-                              kernel_size=(3, 3),
-                              activation='relu',
-                              input_shape=(self.x_dim4_shape[1], self.x_dim4_shape[2], self.x_dim4_shape[3])))
-        self.model.add(MaxPooling2D(pool_size=(2, 2)))
-        self.model.add(Conv2D(filters=64,
-                              kernel_size=(11, 11),
-                              activation='relu'))
-        self.model.add(MaxPooling2D(pool_size=(2, 2)))
-        self.model.add(Dropout(0.25))
-        self.model.add(Flatten())
-        self.model.add(Dense(units=100, activation='relu'))
-        self.model.add(Dropout(0.5))
-        self.model.add(Dense(self.n_classes, activation='softmax'))
+        model = Sequential(name=self.model_name)
+        model.add(Conv2D(filters=32,
+                         kernel_size=(3, 3),
+                         activation='relu',
+                         input_shape=(self.x_dim4_shape[1], self.x_dim4_shape[2], self.x_dim4_shape[3])))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(Conv2D(filters=64,
+                         kernel_size=(11, 11),
+                         activation='relu'))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(Dropout(0.25))
+        model.add(Flatten())
+        model.add(Dense(units=100, activation='relu'))
+        model.add(Dropout(0.5))
+        model.add(Dense(self.n_classes, activation='softmax'))
+
+        # parse kwargs
+        early_stopping_callback = EarlyStopping(monitor='loss', patience=10) if kwargs.get('early_stopping') else None
+        epochs = kwargs.get('epochs') if kwargs.get('epochs') else 100
+        if epochs < 10:
+            raise Exception('epochs must be >= 10')
+        batch_size = kwargs.get('batch_size') if kwargs.get('batch_size') else 32
+
+        callbacks = [early_stopping_callback] if early_stopping_callback else []
+
+        self._train_with_tensorflow(model=model,
+                                    model_name=model_name,
+                                    epochs=epochs,
+                                    callbacks=callbacks,
+                                    batch_size=batch_size,
+                                    x=self.x_dim4,
+                                    y=self.y_ohe)
+
+    def _train_with_tensorflow(self,
+                               model,
+                               model_name: str,
+                               x,
+                               y,
+                               epochs: Optional[int],
+                               callbacks: Optional[List],
+                               batch_size: Optional[int],
+                               ):
+        self._init_training()
+
+        self.model_name = model_name
+        self.model = model
 
         self.model.summary()
-
-        metrics = ['accuracy', Precision(thresholds=0.5), Recall(thresholds=0.5)]
 
         self.model.compile(
             loss='categorical_crossentropy',
             optimizer='adam',
-            metrics=metrics)
+            metrics=self.scoring_metrics_tensorflow
+        )
 
-        x_train, x_test, y_train, y_test = train_test_split(self.x_dim4, self.y_ohe,
+        x_train, x_test, y_train, y_test = train_test_split(x,
+                                                            y,
                                                             test_size=self.test_size,
                                                             random_state=self.random_state,
                                                             stratify=self.y_ohe,
                                                             )
 
-        early_stopping_callback = EarlyStopping(monitor='loss', patience=5)
-        epochs = kwargs.get('epochs') if kwargs.get('epochs') else 100
-        if epochs < 10:
-            raise Exception('epochs must be >= 10')
-
-        self.history = self.model.fit(x_train, y_train,
-                                      epochs=epochs,
-                                      batch_size=32,
-                                      validation_split=0.2,
-                                      shuffle=True
-                                      )
+        self.history = self.model.fit(
+            x_train, y_train,
+            epochs=epochs,
+            batch_size=batch_size,
+            validation_split=0.2,
+            shuffle=True,
+            callbacks=callbacks
+        )
 
         self.score = self.model.evaluate(x_test, y_test)
 
-        return
+        # get back list of original labels, e.g. ['cat', 'dog', etc...]
+        y_test_labels = [k[0] for k in self.ohe.inverse_transform(y_test)]
+        y_test_pred = self.model.predict(x_test)
+        y_test_pred_labels = [k[0] for k in self.ohe.inverse_transform(y_test_pred)]
 
-    def _train_with_tensorflow(self):
+        self.confusion_matrix: np.ndarray = make_confusion_matrix(y_true=y_test_labels,
+                                                                  y_pred=y_test_pred_labels,
+                                                                  labels=self.labels)
+
+        # todo: get test score and calculate proper report
+        self._calculate_report_for_model_tensorflow()
 
         return
 
@@ -600,6 +640,10 @@ class ClassificationTask:
 
         make_training_history_plot(history=self.history, metric='accuracy', model_name=self.model_name)
         make_training_history_plot(history=self.history, metric='loss', model_name=self.model_name)
+
+    def _calculate_report_for_model_tensorflow(self):
+        # todo: calculate report
+        self.report = self.score
 
     def predict(self, x: np.ndarray):
         return self.model.predict(x)
@@ -618,6 +662,7 @@ class ClassificationTask:
         pickle.dump(self.model, open(path, 'wb'))
 
     def _init_training(self):
+        self._init_scoring()
         self.fit_time_total_s = None
         self.fit_time_best_model_k_folds_s = None
         self.score = {}
@@ -630,20 +675,23 @@ class ClassificationTask:
         self.small_report = {}
         self.confusion_matrix = None
         self.history = None
+        self.x_train, self.y_train, self.x_test, self.y_test = None, None, None, None
+        self.y_test_pred, self.y_test_pred_proba = None, None
 
     def _init_scoring(self):
         # todo: change scoring technique depending wther probelm is binary or multiclass
         logger.debug('returning 0 on precision score zerodivision')
 
-        self.scoring_methods = {'accuracy_score': make_scorer(accuracy_score),
-                                'f1_score': make_scorer(f1_score, average=self.score_average_method),
-                                'precision_score': make_scorer(precision_score, average=self.score_average_method,
-                                                               zero_division=0),
-                                'recall_score': make_scorer(recall_score, average=self.score_average_method),
-                                'matthews_score': make_scorer(matthews_corrcoef),
-                                'zero_one_loss_score': make_scorer(zero_one_loss),
-                                # 'roc_auc_score': make_scorer(roc_auc_score, average='macro', multi_class='ovo')
-                                }
+        self.scoring_metrics_keras = {'accuracy_score': make_scorer(accuracy_score),
+                                      'f1_score': make_scorer(f1_score, average=self.score_average_method),
+                                      'precision_score': make_scorer(precision_score, average=self.score_average_method,
+                                                                     zero_division=0),
+                                      'recall_score': make_scorer(recall_score, average=self.score_average_method),
+                                      'matthews_score': make_scorer(matthews_corrcoef),
+                                      'zero_one_loss_score': make_scorer(zero_one_loss),
+                                      # 'roc_auc_score': make_scorer(roc_auc_score, average='macro', multi_class='ovo')
+                                      }
+        self.scoring_metrics_tensorflow = ['accuracy', Precision(thresholds=0.5), Recall(thresholds=0.5)]
 
     def search_estimator(self,
                          do_grid_search: bool = False):

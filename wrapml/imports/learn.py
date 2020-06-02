@@ -8,7 +8,7 @@ from sklearn.neighbors import KNeighborsClassifier
 import pickle
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score, make_scorer, \
-    roc_auc_score, matthews_corrcoef, cohen_kappa_score, zero_one_loss
+    roc_auc_score, roc_curve, auc, matthews_corrcoef, cohen_kappa_score, zero_one_loss, plot_roc_curve
 from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV
@@ -24,7 +24,9 @@ logger.debug("TensorFlow ready. Version:", tf.__version__)
 
 from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional, Conv2D, MaxPooling2D, Flatten
 from tensorflow.keras.models import Sequential
+
 from tensorflow.keras.utils import to_categorical
+from tensorflow import one_hot
 
 from tensorflow.keras.metrics import Precision, Recall, Accuracy, SparseCategoricalAccuracy, \
     TrueNegatives, TruePositives, FalseNegatives, FalsePositives
