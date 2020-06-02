@@ -47,6 +47,7 @@ from wrapml.constants import CONV2DCLASSIFIER_MODEL_NAME, LSTMCLASSIFIER_MODEL_N
 
 
 # todo MED PRIO:
+#  - check if timeseries autocorrelates (check if it's timeseries)
 #  - add print plots (ROC curve, confusion matrix, overfit, underfit, plot to compare models)
 #  - fix labels encoding
 #  - class weight support
@@ -447,8 +448,6 @@ class ClassificationTask:
         self._calculate_report_for_model_keras()
 
     def make_roc_plot(self, pos_label: int or str):
-        if self.classification_type != CLASSIFICATION_TYPE_BINARY:
-            raise Exception('roc plot supported for binary classification problems only')
         if self.y_test_pred_proba is None:
             raise Exception('cannot make roc plot for model {}, probability not available'.format(self.model_name))
 
