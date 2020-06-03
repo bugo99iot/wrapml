@@ -16,6 +16,9 @@ from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from xgboost import XGBClassifier
 
+# some models don't support parallel jobs
+MODEL_CLASSES_NOT_SUPPORTING_PARALLEL_JOBS = [SVC, AdaBoostClassifier]
+
 # NN
 
 import tensorflow as tf

@@ -14,7 +14,7 @@ class TestImageGrayScaleClassificationTask(TestCase):
 
     ct = ClassificationTask(x=x, y=y)
 
-    ct.k_fold_cross_validation = 2
+    ct.k_folds = 2
     ct.n_jobs = 1
 
     def test_knn(self):
@@ -41,10 +41,10 @@ class TestImageGrayScaleClassificationTask(TestCase):
 
     def test_xgboost(self):
 
-        self.ct.train_with_xgboost()
+        self.ct.train_with_xgboost(do_grid_search=True)
         score = self.ct.score
-        accuracy = round(score['test']['accuracy_score'], 2)
-        self.assertEqual(0.47, accuracy)
+        accuracy = round(score['test']['accuracy_score_k_fold_mean'], 2)
+        self.assertEqual(0.63, accuracy)
         report = self.ct.report
         small_report = self.ct.small_report
         self.ct.make_confusion_plot()
@@ -64,7 +64,7 @@ class TestScalarClassificationTask(TestCase):
 
     ct = ClassificationTask(x=x, y=y)
 
-    ct.k_fold_cross_validation = 2
+    ct.k_folds = 2
     ct.n_jobs = 1
 
     def test_knn(self):
@@ -135,7 +135,7 @@ class TestTimeseriesClassificationTask(TestCase):
 
     ct = ClassificationTask(x=x, y=y)
 
-    ct.k_fold_cross_validation = 2
+    ct.k_folds = 2
     ct.n_jobs = 1
 
     # todo: coming soon, include lstm
@@ -151,7 +151,7 @@ class TestWineClassificationTask(TestCase):
 
         ct = ClassificationTask(x=self.x, y=self.y)
         ct.n_jobs = 1
-        ct.k_fold_cross_validation = 2
+        ct.k_folds = 2
 
         ct.search_estimator()
 
@@ -169,7 +169,7 @@ class TestIrisClassificationTask(TestCase):
 
         ct = ClassificationTask(x=self.x, y=self.y)
         ct.n_jobs = 1
-        ct.k_fold_cross_validation = 2
+        ct.k_folds = 2
 
         ct.search_estimator()
 
@@ -189,7 +189,7 @@ class TestDigitsClassificationTask(TestCase):
 
         ct = ClassificationTask(x=self.x, y=self.y)
         ct.n_jobs = 1
-        ct.k_fold_cross_validation = 2
+        ct.k_folds = 2
 
         ct.search_estimator(do_grid_search=True)
 
@@ -208,7 +208,7 @@ class TestBreastCancerClassificationTask(TestCase):
 
         ct = ClassificationTask(x=self.x, y=self.y)
         ct.n_jobs = 1
-        ct.k_fold_cross_validation = 2
+        ct.k_folds = 2
 
         ct.search_estimator(do_grid_search=True)
 

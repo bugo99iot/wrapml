@@ -1,5 +1,5 @@
 # Utils
-from wrapml.imports.vanilla import Dict, Optional, List, pprint
+from wrapml.imports.vanilla import Dict, Optional, List, pprint, datetime
 
 # DS
 from wrapml.imports.science import np, pd
@@ -8,6 +8,7 @@ from wrapml.plots import make_training_history_plot, make_confusion_plot, make_r
 # ML
 from wrapml.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
     XGBClassifier
+from wrapml.imports.learn import MODEL_CLASSES_NOT_SUPPORTING_PARALLEL_JOBS
 from wrapml.imports.learn import f1_score, accuracy_score, precision_score, recall_score, matthews_corrcoef, \
     cohen_kappa_score, roc_auc_score, zero_one_loss, auc, make_scorer
 from wrapml.imports.learn import confusion_matrix as make_confusion_matrix
@@ -63,8 +64,6 @@ from wrapml.constants import CONV2DCLASSIFIER_MODEL_NAME, LSTMCLASSIFIER_MODEL_N
 #  - feature selection
 #  - add score given min probability for classifier which provide probability
 
-
-
 class ClassificationTask:
 
     def __init__(self, x: np.ndarray,
@@ -79,26 +78,22 @@ class ClassificationTask:
         # scoring
         self.test_size = DEFAULT_TEST_SIZE
         self.stratify = True  # todo: add stratify = False option
-        self.k_fold_cross_validation = 1
         self.fit_time_best_model_k_folds_s: Optional[int] = None
         self.fit_time_total_s: Optional[int] = None
         self.score: Dict = {}
         self.score_dp: int = 4
         self.score_average_method: str = 'weighted'
-        self.do_grid_search: bool = False
         self.return_train_score: bool = True
-        self.scoring_metrics_keras: Dict = {}
+        self.scoring_metrics_keras_scorers: Dict = {}
+        self.scoring_metrics_keras_scorers_for_gridsearch: Dict = {}
         self.scoring_metrics_tensorflow: Dict = {}
         self.scoring_metrics_tensorflow_ordered: List = []
-        self.score_criteria_for_best_model_fit = 'f1_score'
+        self.score_criteria_for_best_model_fit = 'recall_score'
 
         # model
         self.model = None
         self.best_model_parameters: Dict = {}
         self.model_name: Optional[str] = None
-
-        self.best_parameters_from_grid_search: Dict = {}
-        self.parameter_combinations_searched: Optional[int] = None
 
         self.history: Optional[History] = None
 
@@ -269,95 +264,115 @@ class ClassificationTask:
     # Keras based
 
     def train_with_knn(self,
-                       do_grid_search: bool = None,
+                       do_grid_search: bool = False,
                        grid_search_parameters: Dict = None,
                        score_criteria_for_best_model_fit: str = None,
+                       k_folds: int = 1,
                        **kwargs
                        ):
 
-        model = KNeighborsClassifier(**kwargs, n_jobs=self.n_jobs)
+        model = KNeighborsClassifier
 
-        self._train_with_keras(model=model,
+        self._train_with_keras(model_class=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               model_parameters=kwargs,
+                               k_folds=k_folds)
 
     def train_with_random_forests(self,
-                                  do_grid_search: bool = None,
+                                  do_grid_search: bool = False,
                                   grid_search_parameters: Dict = None,
                                   score_criteria_for_best_model_fit: str = None,
+                                  k_folds: int = 1,
                                   **kwargs):
 
-        model = RandomForestClassifier(**kwargs, random_state=self.random_state, n_jobs=self.n_jobs)
+        model = RandomForestClassifier
 
-        self._train_with_keras(model=model,
+        self._train_with_keras(model_class=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               model_parameters=kwargs,
+                               k_folds=k_folds)
 
     def train_with_mlp(self,
-                       do_grid_search: bool = None,
+                       do_grid_search: bool = False,
                        grid_search_parameters: Dict = None,
                        score_criteria_for_best_model_fit: str = None,
+                       k_folds: int = 1,
                        **kwargs):
 
-        model = MLPClassifier(**kwargs, random_state=self.random_state, early_stopping=True)
+        model = MLPClassifier
 
-        self._train_with_keras(model=model,
+        self._train_with_keras(model_class=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               model_parameters=kwargs,
+                               k_folds=k_folds)
 
     def train_with_xgboost(self,
-                           do_grid_search: bool = None,
+                           do_grid_search: bool = False,
                            grid_search_parameters: Dict = None,
                            score_criteria_for_best_model_fit: str = None,
+                           k_folds: int = 1,
                            **kwargs):
         # https://xgboost.readthedocs.io/en/latest/python/python_api.html
         # https://xgboost.readthedocs.io/en/latest/parameter.html
 
-        model = XGBClassifier(**kwargs, n_jobs=self.n_jobs, random_state=self.random_state)
+        model = XGBClassifier
 
-        self._train_with_keras(model=model,
+        self._train_with_keras(model_class=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               model_parameters=kwargs,
+                               k_folds=k_folds)
 
     def train_with_ada(self,
-                       do_grid_search: bool = None,
+                       do_grid_search: bool = False,
                        grid_search_parameters: Dict = None,
                        score_criteria_for_best_model_fit: str = None,
+                       k_folds: int = 1,
                        **kwargs):
 
-        model = AdaBoostClassifier(**kwargs, random_state=self.random_state)
+        model = AdaBoostClassifier
 
-        self._train_with_keras(model=model,
+        self._train_with_keras(model_class=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               model_parameters=kwargs,
+                               k_folds=k_folds)
 
     def train_with_svc(self,
-                       do_grid_search: bool = None,
+                       do_grid_search: bool = False,
                        grid_search_parameters: Dict = None,
                        score_criteria_for_best_model_fit: str = None,
+                       k_folds: int = 1,
                        **kwargs):
 
-        model = SVC(**kwargs, random_state=self.random_state)
+        model = SVC
 
-        self._train_with_keras(model=model,
+        self._train_with_keras(model_class=model,
                                grid_search_parameters=grid_search_parameters,
                                score_criteria_for_best_model_fit=score_criteria_for_best_model_fit,
-                               do_grid_search=do_grid_search)
+                               do_grid_search=do_grid_search,
+                               model_parameters=kwargs,
+                               k_folds=k_folds)
 
     def _train_with_keras(self,
-                          model,
+                          model_class,
                           do_grid_search: bool,
                           grid_search_parameters: Dict,
-                          score_criteria_for_best_model_fit: str
+                          score_criteria_for_best_model_fit: str,
+                          model_parameters: Dict,
+                          k_folds: int,
                           ):
         """
 
-        :param model:
+        :param model_class:
         :param grid_search_parameters:
 
         :return:
@@ -365,87 +380,180 @@ class ClassificationTask:
 
         self._init_training()
 
-        model = model
-        self.model_name = type(model).__name__
+        # parse arguments
+
+        self.model_name = model_class.__name__
 
         logger.info('Training with {}.'.format(self.model_name))
 
-        if do_grid_search is not None:
-            do_grid_search_for_model = do_grid_search
-        else:
-            do_grid_search_for_model = self.do_grid_search
+        # check k_folds for cross validation
 
-        if not do_grid_search_for_model:
-            grid_search_parameters = {}
+        if not isinstance(k_folds, int):
+            raise Exception('k_folds must be int')
+
+        # check do grid search
+
+        if not isinstance(do_grid_search, bool):
+            raise Exception('do_grid_search must be bool')
+
+        # parse score criteria for best model fit
+
+        score_criteria_for_best_model_fit = score_criteria_for_best_model_fit \
+            if score_criteria_for_best_model_fit else self.score_criteria_for_best_model_fit
+
+        # parse model parameters
+
+        if do_grid_search:
+            model_parameters = {}
         else:
+            model_parameters = model_parameters if model_parameters is not None else {}
+
+        if model_class in MODEL_CLASSES_NOT_SUPPORTING_PARALLEL_JOBS:
+            if 'n_jobs' in model_parameters.keys():
+                model_parameters.pop('n_jobs')
+        else:
+            if 'n_jobs' in model_parameters.keys():
+                pass
+            else:
+                model_parameters['n_jobs'] = self.n_jobs
+
+        if 'random_state' in model_parameters.keys():
+            pass
+        else:
+            model_parameters['random_state'] = self.random_state
+
+        # instantiating splitter for cross-validation
+
+        logger.debug('Using StratifiedShuffleSplit for cross-validation.')
+        sss = StratifiedShuffleSplit(n_splits=k_folds,
+                                     test_size=self.test_size,
+                                     random_state=self.random_state)
+
+        if do_grid_search:
+
             if grid_search_parameters:
                 pass
             else:
                 grid_search_parameters = DEFAULT_GRID_SEARCH_PARAMETERS[self.model_name]
 
-        score_criteria_for_best_model_fit = score_criteria_for_best_model_fit \
-            if score_criteria_for_best_model_fit else self.score_criteria_for_best_model_fit
+            gridsearch = GridSearchCV(estimator=model_class(**model_parameters),
+                                      param_grid=grid_search_parameters,
+                                      n_jobs=self.n_jobs,
+                                      scoring=self.scoring_metrics_keras_scorers_for_gridsearch,
+                                      cv=sss,
+                                      refit=False,
+                                      return_train_score=True)
 
-        logger.debug('Using StratifiedShuffleSplit for cross-validation.')
-        sss = StratifiedShuffleSplit(n_splits=self.k_fold_cross_validation,
-                                     test_size=self.test_size,
-                                     random_state=self.random_state)
+            now = datetime.datetime.now()
+            gridsearch.fit(self.x_dim2, self.y_dim1)
+            time_taken_in_s: int = (datetime.datetime.now() - now).seconds
+            self.score['time_taken_k_fold_gridsearch_fit_in_s'] = time_taken_in_s
 
-        model_gridsearch = GridSearchCV(estimator=model,
-                                        param_grid=grid_search_parameters,
-                                        n_jobs=self.n_jobs,
-                                        scoring=self.scoring_metrics_keras,
-                                        refit=score_criteria_for_best_model_fit,
-                                        cv=sss,
-                                        return_train_score=True)
+            gridsearch_results: Dict = gridsearch.cv_results_
 
-        model_gridsearch.fit(self.x_dim2, self.y_dim1)
+            self.score['best_score_criteria'] = score_criteria_for_best_model_fit
+            best_estimator_index: int = \
+                int(np.argmax(gridsearch_results['mean_test_' + score_criteria_for_best_model_fit]))
+            best_parameters_from_grid_search: Dict = gridsearch_results['params'][best_estimator_index]
+            self.score['best_parameters_from_gridsearch'] = best_parameters_from_grid_search
+            self.score['parameters_combinations_searched'] = len(gridsearch_results['params'])
 
-        # todo: maybe make refit best model manually so that confusion matrix can be trusted
+            # let's parse score for best model, mean means mean of k-folds
+            for j in ['train', 'test']:
+                set_score = {}
+                for k in self.scoring_metrics_keras_scorers.keys():
+                    set_score[k + '_k_fold_mean'] = \
+                        round(float(gridsearch_results['mean_' + j + '_' + k][best_estimator_index]), self.score_dp)
+                    set_score[k + '_k_fold_std'] = \
+                        round(float(gridsearch_results['std_' + j + '_' + k][best_estimator_index]), self.score_dp)
+                self.score[j] = set_score
 
-        for train_index, test_index in sss.split(self.x_dim2, self.y_dim1):
+            self.score['test']['best_score_k_fold_mean'] = \
+                self.score['test'][score_criteria_for_best_model_fit + '_k_fold_mean']
+            self.score['test']['best_score_k_fold_std'] = \
+                self.score['test'][score_criteria_for_best_model_fit + '_k_fold_std']
 
-            self.x_train, self.x_test = self.x_dim2[train_index], self.x_dim2[test_index]
-            self.y_train, self.y_test = self.y_dim1[train_index], self.y_dim1[test_index]
-            continue
+            model_parameters_for_refit = best_parameters_from_grid_search
 
-        # get one test split for confusion matrix
-        self.y_test_pred = model_gridsearch.best_estimator_.predict(self.x_test)
-        try:
-            self.y_test_pred_proba = model_gridsearch.best_estimator_.predict_proba(self.x_test)
-        except:
-            self.y_test_pred_proba = None
+            # refit best model with k fold
+            self.model = model_class(**model_parameters_for_refit)
 
-        self.confusion_matrix: np.ndarray = make_confusion_matrix(y_true=self.y_test, y_pred=self.y_test_pred,
-                                                                  labels=self.labels)
+            for train_index, test_index in sss.split(self.x_dim2, self.y_dim1):
+                self.x_train, self.x_test = self.x_dim2[train_index], self.x_dim2[test_index]
+                self.y_train, self.y_test = self.y_dim1[train_index], self.y_dim1[test_index]
 
-        index_of_best_model = model_gridsearch.best_index_
-        results = model_gridsearch.cv_results_
+                continue
 
-        # let's parse score for best model, mean means mean of k-folds
-        for j in ['train', 'test']:
-            set_score = {}
-            for k in self.scoring_metrics_keras.keys():
-                set_score[k] = round(float(results['mean_' + j + '_' + k][index_of_best_model]), self.score_dp)
-                set_score[k + '_std'] = round(float(results['std_' + j + '_' + k][index_of_best_model]), self.score_dp)
-            self.score[j] = set_score
+            now = datetime.datetime.now()
+            self.model.fit(self.x_train, self.y_train)
+            time_taken_in_s: int = (datetime.datetime.now() - now).seconds
+            self.score['time_taken_1_fold_fit_in_s'] = time_taken_in_s
 
-        self.score['best_score_criteria'] = score_criteria_for_best_model_fit
-        self.score['best_score'] = self.score['test'][score_criteria_for_best_model_fit]
-        if round(float(model_gridsearch.best_score_), self.score_dp) != self.score['best_score']:
-            raise Exception('could not identify best score')
+            # get predictions
+            self.y_test_pred = self.model.predict(self.x_test)
 
-        self.best_parameters_from_grid_search = model_gridsearch.best_params_
-        self.parameter_combinations_searched = len(results['mean_fit_time'])
-        self.model = model_gridsearch.best_estimator_
-        self.model_name = type(model).__name__
-        self.best_model_parameters = self.model.get_params()
+            for k, v in self.scoring_metrics_keras_scorers.items():
+                self.score['test'][k + '_1_fold_fit'] = round(v['scorer'](y_true=self.y_test,
+                                                                          y_pred=self.y_test_pred,
+                                                                          **v['kwargs']), self.score_dp)
 
-        self.fit_time_best_model_k_folds_s = round(float(model_gridsearch.refit_time_), 4)
-        self.fit_time_total_s = round(float(np.sum(results['mean_fit_time'])), 4)
+            self.score['test']['best_score_1_fold_fit'] = \
+                self.score['test'][score_criteria_for_best_model_fit + '_1_fold_fit']
 
-        logger.info('Training with {} done. Fit time: {}s.'.format(self.model_name,
-                                                                   self.fit_time_total_s))
+            try:
+                self.y_test_pred_proba = self.model.predict_proba(self.x_test)
+            except:
+                self.y_test_pred_proba = None
+
+            self.confusion_matrix: np.ndarray = make_confusion_matrix(y_true=self.y_test, y_pred=self.y_test_pred,
+                                                                      labels=self.labels)
+
+            logger.info('Training with {} done. Fit time: {}s.'.format(self.model_name,
+                                                                       self.fit_time_total_s))
+
+        else:
+
+            self.score['time_taken_k_fold_gridsearch_fit_in_s'] = None
+            self.score['best_parameters_from_gridsearch'] = None
+            self.score['parameters_combinations_searched'] = None
+
+            self.score['best_score_criteria'] = score_criteria_for_best_model_fit
+
+            self.model = model_class(**model_parameters)
+
+            i = 0
+            for train_index, test_index in sss.split(self.x_dim2, self.y_dim1):
+                self.x_train, self.x_test = self.x_dim2[train_index], self.x_dim2[test_index]
+                self.y_train, self.y_test = self.y_dim1[train_index], self.y_dim1[test_index]
+
+                self.model.fit(self.x_train, self.y_train)
+
+                if i == 0:
+                    # save 1 fold info for first interaction
+                    pass
+
+                i += 1
+
+
+            # todo: do similar to gridsearch but by hand
+            # let's parse score for best model, mean means mean of k-folds
+            for j in ['train', 'test']:
+                set_score = {}
+                for k in self.scoring_metrics_keras_scorers.keys():
+                    set_score[k + '_k_fold_mean'] = \
+                        round(float(gridsearch_results['mean_' + j + '_' + k][best_estimator_index]), self.score_dp)
+                    set_score[k + '_k_fold_std'] = \
+                        round(float(gridsearch_results['std_' + j + '_' + k][best_estimator_index]), self.score_dp)
+                self.score[j] = set_score
+
+            self.score['test']['best_score_k_fold_mean'] = \
+                self.score['test'][score_criteria_for_best_model_fit + '_k_fold_mean']
+            self.score['test']['best_score_k_fold_std'] = \
+                self.score['test'][score_criteria_for_best_model_fit + '_k_fold_std']
+            self.score['time_taken_k_fold_fit_in_s'] = None
+            self.score['time_taken_1_fold_fit_in_s'] = None
+
+            raise Exception('coming soon')
 
         self._calculate_report_for_model_keras()
 
@@ -468,15 +576,10 @@ class ClassificationTask:
 
         report = self.score
 
-        for i in ['fit_time_best_model_k_folds_s',
-                  'fit_time_total_s',
-                  'best_parameters_from_grid_search',
-                  'parameter_combinations_searched',
-                  'k_fold_cross_validation',
+        for i in ['k_folds',
                   'n_classes',
                   'classification_type',
                   'model_name',
-                  'best_model_parameters'
                   ]:
             report[i] = self.__getattribute__(i)
 
@@ -611,7 +714,7 @@ class ClassificationTask:
             metrics=[self.scoring_metrics_tensorflow[k] for k in self.scoring_metrics_tensorflow_ordered]
         )
 
-        sss = StratifiedShuffleSplit(n_splits=self.k_fold_cross_validation,
+        sss = StratifiedShuffleSplit(n_splits=self.k_folds,
                                      test_size=self.test_size,
                                      random_state=self.random_state)
 
@@ -695,8 +798,6 @@ class ClassificationTask:
         self.model = None
         self.model_name = None
         self.best_model_parameters = {}
-        self.best_parameters_from_grid_search = {}
-        self.parameter_combinations_searched = None
         self.report = {}
         self.small_report = {}
         self.confusion_matrix = None
@@ -705,29 +806,42 @@ class ClassificationTask:
         self.y_test_pred, self.y_test_pred_proba = None, None
 
     def _init_scoring(self):
-        # todo: change scoring technique depending wther probelm is binary or multiclass
-        logger.debug('returning 0 on precision score zerodivision')
+        # todo:
+        #  - change scoring technique depending wther probelm is binary or multiclass
+        #  - add sample_weight to scorers
 
-        self.scoring_metrics_keras = {'accuracy_score': make_scorer(accuracy_score),
-                                      'f1_score': make_scorer(f1_score, average=self.score_average_method),
-                                      'precision_score': make_scorer(precision_score, average=self.score_average_method,
-                                                                     zero_division=0),
-                                      'recall_score': make_scorer(recall_score, average=self.score_average_method),
-                                      # https://stackoverflow.com/questions/49061575/why-when-i-use-gridsearchcv-with-roc-auc-scoring-the-score-is-different-for-gri
-                                      #'auc_score': make_scorer(roc_auc_score, multi_class='ovr',
-                                      #                         labels=self.labels,
-                                      #                         greater_is_better=True,
-                                      #                         needs_threshold=True
-                                      #                         ),
-                                      'matthews_score': make_scorer(matthews_corrcoef),
-                                      # 'zero_one_loss_score': make_scorer(zero_one_loss),
-                                      }
+        logger.debug('returning 0 on precision score zerodivision')
+        self.scoring_metrics_keras_scorers = {'accuracy_score': {'scorer': accuracy_score,
+                                                                 'kwargs': {}
+                                                               },
+                                            'precision_score': {'scorer': precision_score,
+                                                                'kwargs': {'average': self.score_average_method,
+                                                                           'zero_division': 0}
+                                                                },
+                                            'recall_score': {'scorer': recall_score,
+                                                             'kwargs': {'average': self.score_average_method}
+                                                             },
+                                            'f1_score': {'scorer': f1_score,
+                                                         'kwargs': {'average': self.score_average_method}
+                                                         },
+                                            'matthews_score': {'scorer': matthews_corrcoef,
+                                                               'kwargs': {}
+                                                               },
+                                            # https://stackoverflow.com/questions/49061575/why-when-i-use-gridsearchcv-with-roc-auc-scoring-the-score-is-different-for-gri
+                                            # 'auc_score': make_scorer(roc_auc_score, multi_class='ovr',
+                                            #                         labels=self.labels,
+                                            #                         greater_is_better=True,
+                                            #                         needs_threshold=True
+                                            #                         ),
+                                            # 'zero_one_loss_score': make_scorer(zero_one_loss),
+                                            }
+        self.scoring_metrics_keras_scorers_for_gridsearch = {k: make_scorer(v['scorer'], **v['kwargs']) for (k, v) in self.scoring_metrics_keras_scorers.items()}
         self.scoring_metrics_tensorflow = {'accuracy_score': 'accuracy',
                                            'precision_score': tf_precision_score(),
                                            'recall_score': tf_recall_score(),
                                            'f1_score': tf_f1_score_funk,
                                            'matthews_score': tf_matthews_score_funk,
-                                           'auc_score': tf_auc_score()
+                                           # 'auc_score': tf_auc_score()
                                            }
 
         self.scoring_metrics_tensorflow_ordered = ['accuracy_score',
