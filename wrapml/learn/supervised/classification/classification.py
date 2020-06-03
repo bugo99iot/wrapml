@@ -97,7 +97,6 @@ class ClassificationTask:
 
         # report
         self.report: Dict = {}
-        self.small_report: Dict = {}
 
         # data
         self.y_input = y
@@ -606,11 +605,6 @@ class ClassificationTask:
             raise Exception('Cannot print report, report has not been instantiated')
         pprint(self.report)
 
-    def print_small_report(self):
-        if not self.report:
-            raise Exception('Cannot print small report, small report has not been instantiated')
-        pprint(self.small_report)
-
     # Tensorflow based
 
     def train_with_lstm(self,
@@ -813,7 +807,6 @@ class ClassificationTask:
         self.model_name = None
         self.best_model_parameters = {}
         self.report = {}
-        self.small_report = {}
         self.confusion_matrix = None
         self.history = None
         self.x_train, self.y_train, self.x_test, self.y_test = None, None, None, None
@@ -827,29 +820,30 @@ class ClassificationTask:
         logger.debug('returning 0 on precision score zerodivision')
         self.scoring_metrics_keras_scorers = {'accuracy_score': {'scorer': accuracy_score,
                                                                  'kwargs': {}
+                                                                 },
+                                              'precision_score': {'scorer': precision_score,
+                                                                  'kwargs': {'average': self.score_average_method,
+                                                                             'zero_division': 0}
+                                                                  },
+                                              'recall_score': {'scorer': recall_score,
+                                                               'kwargs': {'average': self.score_average_method}
                                                                },
-                                            'precision_score': {'scorer': precision_score,
-                                                                'kwargs': {'average': self.score_average_method,
-                                                                           'zero_division': 0}
-                                                                },
-                                            'recall_score': {'scorer': recall_score,
-                                                             'kwargs': {'average': self.score_average_method}
-                                                             },
-                                            'f1_score': {'scorer': f1_score,
-                                                         'kwargs': {'average': self.score_average_method}
-                                                         },
-                                            'matthews_score': {'scorer': matthews_corrcoef,
-                                                               'kwargs': {}
-                                                               },
-                                            # https://stackoverflow.com/questions/49061575/why-when-i-use-gridsearchcv-with-roc-auc-scoring-the-score-is-different-for-gri
-                                            # 'auc_score': make_scorer(roc_auc_score, multi_class='ovr',
-                                            #                         labels=self.labels,
-                                            #                         greater_is_better=True,
-                                            #                         needs_threshold=True
-                                            #                         ),
-                                            # 'zero_one_loss_score': make_scorer(zero_one_loss),
-                                            }
-        self.scoring_metrics_keras_scorers_for_gridsearch = {k: make_scorer(v['scorer'], **v['kwargs']) for (k, v) in self.scoring_metrics_keras_scorers.items()}
+                                              'f1_score': {'scorer': f1_score,
+                                                           'kwargs': {'average': self.score_average_method}
+                                                           },
+                                              'matthews_score': {'scorer': matthews_corrcoef,
+                                                                 'kwargs': {}
+                                                                 },
+                                              # https://stackoverflow.com/questions/49061575/why-when-i-use-gridsearchcv-with-roc-auc-scoring-the-score-is-different-for-gri
+                                              # 'auc_score': make_scorer(roc_auc_score, multi_class='ovr',
+                                              #                         labels=self.labels,
+                                              #                         greater_is_better=True,
+                                              #                         needs_threshold=True
+                                              #                         ),
+                                              # 'zero_one_loss_score': make_scorer(zero_one_loss),
+                                              }
+        self.scoring_metrics_keras_scorers_for_gridsearch = {k: make_scorer(v['scorer'], **v['kwargs']) for (k, v) in
+                                                             self.scoring_metrics_keras_scorers.items()}
         self.scoring_metrics_tensorflow = {'accuracy_score': 'accuracy',
                                            'precision_score': tf_precision_score(),
                                            'recall_score': tf_recall_score(),
@@ -914,7 +908,4 @@ class ClassificationTask:
         report['best_estimator']['best_estimator_best_score_criteria'] = best_estimator_best_score_criteria
         report['best_estimator']['best_estimator_fit_time_k_folds_s'] = best_estimator_fit_time_k_folds_s
 
-        small_report = {'best_estimator': report['best_estimator']}
-
         self.report = report
-        self.small_report = small_report

@@ -50,7 +50,7 @@ class DataGenerator:
             label_index = self.labels.index(label)
 
             # mean and standard deviation
-            mu = 10.0*(label_index+1)
+            mu = 30.0*(label_index+1)
             sigma = 30.0
 
             x.append(np.random.normal(mu, sigma, x_shape_exclude_n_samples).tolist())

@@ -32,7 +32,7 @@ class TestClassificationTask(TestCase):
 
 class TestImageGrayScaleClassificationTask(TestCase):
 
-    dg = DataGenerator(n_classes=10,
+    dg = DataGenerator(n_classes=2,
                        x_shape=(100, 40, 40, 1))
     x, y = dg.xy()
 
@@ -46,9 +46,8 @@ class TestImageGrayScaleClassificationTask(TestCase):
         self.ct.train_with_knn(do_grid_search=False)
         score = self.ct.score
         accuracy = round(score['test']['accuracy_score_k_fold_mean'], 2)
-        self.assertEqual(0.97, accuracy)
+        self.assertEqual(1.0, accuracy)
         report = self.ct.report
-        small_report = self.ct.small_report
         self.ct.make_confusion_plot()
         self.ct.make_roc_plot(pos_label=self.ct.labels[0])
 
@@ -57,27 +56,43 @@ class TestImageGrayScaleClassificationTask(TestCase):
         self.ct.train_with_random_forests(do_grid_search=False)
         score = self.ct.score
         accuracy = round(score['test']['accuracy_score_k_fold_mean'], 2)
-        self.assertEqual(0.69, accuracy)
+        self.assertEqual(1.0, accuracy)
         report = self.ct.report
-        small_report = self.ct.small_report
         self.ct.make_confusion_plot()
         self.ct.make_roc_plot(pos_label=self.ct.labels[0])
 
     def test_xgboost(self):
 
-        self.ct.train_with_xgboost(do_grid_search=True, k_folds=3)
+        self.ct.train_with_xgboost(do_grid_search=False)
         score = self.ct.score
         accuracy = round(score['test']['accuracy_score_k_fold_mean'], 2)
-        self.assertEqual(0.63, accuracy)
+        self.assertEqual(1.0, accuracy)
         report = self.ct.report
-        small_report = self.ct.small_report
+        self.ct.make_confusion_plot()
+        self.ct.make_roc_plot(pos_label=self.ct.labels[0])
+
+    def test_svc(self):
+
+        self.ct.train_with_svc(do_grid_search=False)
+        score = self.ct.score
+        accuracy = round(score['test']['accuracy_score_k_fold_mean'], 2)
+        self.assertEqual(1.0, accuracy)
+        report = self.ct.report
+        self.ct.make_confusion_plot()
+
+    def test_ada(self):
+
+        self.ct.train_with_ada(do_grid_search=False)
+        score = self.ct.score
+        accuracy = round(score['test']['accuracy_score_k_fold_mean'], 2)
+        self.assertEqual(1.0, accuracy)
+        report = self.ct.report
         self.ct.make_confusion_plot()
         self.ct.make_roc_plot(pos_label=self.ct.labels[0])
 
     def test_conv2d(self):
         self.ct.train_with_conv2d(epochs=10)
         report = self.ct.report
-        small_report = self.ct.small_report
 
 
 class TestScalarClassificationTask(TestCase):
@@ -98,7 +113,6 @@ class TestScalarClassificationTask(TestCase):
         accuracy = round(score['test']['accuracy_score'], 2)
         self.assertEqual(0.58, accuracy)
         report = self.ct.report
-        small_report = self.ct.small_report
         self.ct.make_confusion_plot()
         self.ct.make_roc_plot(pos_label=self.ct.labels[0])
 
@@ -109,7 +123,6 @@ class TestScalarClassificationTask(TestCase):
         accuracy = round(score['test']['accuracy_score'], 2)
         self.assertEqual(0.64, accuracy)
         report = self.ct.report
-        small_report = self.ct.small_report
         self.ct.make_confusion_plot()
         self.ct.make_roc_plot(pos_label=self.ct.labels[0])
 
@@ -120,7 +133,6 @@ class TestScalarClassificationTask(TestCase):
         accuracy = round(score['test']['accuracy_score'], 2)
         self.assertEqual(0.6, accuracy)
         report = self.ct.report
-        small_report = self.ct.small_report
         self.ct.make_confusion_plot()
         self.ct.make_roc_plot(pos_label=self.ct.labels[0])
 
@@ -131,14 +143,12 @@ class TestScalarClassificationTask(TestCase):
         accuracy = round(score['test']['accuracy_score'], 2)
         self.assertEqual(0.6, accuracy)
         report = self.ct.report
-        small_report = self.ct.small_report
         self.ct.make_confusion_plot()
         self.ct.make_roc_plot(pos_label=self.ct.labels[0])
 
     def test_search_estimator(self):
         self.ct.search_estimator(do_grid_search=False)
         report = self.ct.report
-        small_report = self.ct.small_report
         self.ct.make_confusion_plot()
         self.ct.make_roc_plot(pos_label=self.ct.labels[0])
 
@@ -146,7 +156,6 @@ class TestScalarClassificationTask(TestCase):
     def test_search_estimator_with_grid_search(self):
         self.ct.search_estimator(do_grid_search=True)
         report = self.ct.report
-        small_report = self.ct.small_report
         self.ct.make_confusion_plot()
         self.ct.make_roc_plot(pos_label=self.ct.labels[0])
 
