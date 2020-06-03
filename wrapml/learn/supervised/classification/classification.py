@@ -8,7 +8,7 @@ from wrapml.plots import make_training_history_plot, make_confusion_plot, make_r
 # ML
 from wrapml.imports.learn import RandomForestClassifier, KNeighborsClassifier, AdaBoostClassifier, SVC, MLPClassifier, \
     XGBClassifier
-from wrapml.imports.learn import MODEL_CLASSES_NOT_SUPPORTING_PARALLEL_JOBS
+from wrapml.imports.learn import MODEL_CLASSES_NOT_SUPPORTING_PARALLEL_JOBS, MODEL_CLASSES_NOT_SUPPORTING_RANDOM_STATE
 from wrapml.imports.learn import f1_score, accuracy_score, precision_score, recall_score, matthews_corrcoef, \
     cohen_kappa_score, roc_auc_score, zero_one_loss, auc, make_scorer
 from wrapml.imports.learn import confusion_matrix as make_confusion_matrix
@@ -78,8 +78,6 @@ class ClassificationTask:
         # scoring
         self.test_size = DEFAULT_TEST_SIZE
         self.stratify = True  # todo: add stratify = False option
-        self.fit_time_best_model_k_folds_s: Optional[int] = None
-        self.fit_time_total_s: Optional[int] = None
         self.score: Dict = {}
         self.score_dp: int = 4
         self.score_average_method: str = 'weighted'
@@ -372,9 +370,6 @@ class ClassificationTask:
                           ):
         """
 
-        :param model_class:
-        :param grid_search_parameters:
-
         :return:
         """
 
@@ -417,10 +412,14 @@ class ClassificationTask:
             else:
                 model_parameters['n_jobs'] = self.n_jobs
 
-        if 'random_state' in model_parameters.keys():
-            pass
+        if model_class in MODEL_CLASSES_NOT_SUPPORTING_RANDOM_STATE:
+            if 'random_state' in model_parameters.keys():
+                model_parameters.pop('random_state')
         else:
-            model_parameters['random_state'] = self.random_state
+            if 'random_state' in model_parameters.keys():
+                pass
+            else:
+                model_parameters['random_state'] = self.random_state
 
         # instantiating splitter for cross-validation
 
@@ -428,6 +427,10 @@ class ClassificationTask:
         sss = StratifiedShuffleSplit(n_splits=k_folds,
                                      test_size=self.test_size,
                                      random_state=self.random_state)
+
+        self.score['k_folds'] = k_folds
+
+        self.score['best_score_criteria'] = score_criteria_for_best_model_fit
 
         if do_grid_search:
 
@@ -444,21 +447,22 @@ class ClassificationTask:
                                       refit=False,
                                       return_train_score=True)
 
-            now = datetime.datetime.now()
+            gridsearch_start = datetime.datetime.now()
             gridsearch.fit(self.x_dim2, self.y_dim1)
-            time_taken_in_s: int = (datetime.datetime.now() - now).seconds
-            self.score['time_taken_k_fold_gridsearch_fit_in_s'] = time_taken_in_s
+            time_taken_in_s: int = (datetime.datetime.now() - gridsearch_start).seconds
+            self.score['time_taken_total_fit_in_s'] = time_taken_in_s
 
             gridsearch_results: Dict = gridsearch.cv_results_
 
-            self.score['best_score_criteria'] = score_criteria_for_best_model_fit
             best_estimator_index: int = \
                 int(np.argmax(gridsearch_results['mean_test_' + score_criteria_for_best_model_fit]))
             best_parameters_from_grid_search: Dict = gridsearch_results['params'][best_estimator_index]
-            self.score['best_parameters_from_gridsearch'] = best_parameters_from_grid_search
+            if 'random_state' in model_parameters:
+                best_parameters_from_grid_search['random_state'] = model_parameters['random_state']
+            self.score['model_parameters'] = best_parameters_from_grid_search
             self.score['parameters_combinations_searched'] = len(gridsearch_results['params'])
 
-            # let's parse score for best model, mean means mean of k-folds
+            # let's parse score for best model, mean of k-folds
             for j in ['train', 'test']:
                 set_score = {}
                 for k in self.scoring_metrics_keras_scorers.keys():
@@ -468,15 +472,11 @@ class ClassificationTask:
                         round(float(gridsearch_results['std_' + j + '_' + k][best_estimator_index]), self.score_dp)
                 self.score[j] = set_score
 
-            self.score['test']['best_score_k_fold_mean'] = \
-                self.score['test'][score_criteria_for_best_model_fit + '_k_fold_mean']
-            self.score['test']['best_score_k_fold_std'] = \
-                self.score['test'][score_criteria_for_best_model_fit + '_k_fold_std']
-
-            model_parameters_for_refit = best_parameters_from_grid_search
+            self.score['best_score_k_fold_mean'] = self.score['test'][score_criteria_for_best_model_fit + '_k_fold_mean']
+            self.score['best_score_k_fold_std'] = self.score['test'][score_criteria_for_best_model_fit + '_k_fold_std']
 
             # refit best model with k fold
-            self.model = model_class(**model_parameters_for_refit)
+            self.model = model_class(**best_parameters_from_grid_search)
 
             for train_index, test_index in sss.split(self.x_dim2, self.y_dim1):
                 self.x_train, self.x_test = self.x_dim2[train_index], self.x_dim2[test_index]
@@ -484,76 +484,93 @@ class ClassificationTask:
 
                 continue
 
-            now = datetime.datetime.now()
+            start_refit = datetime.datetime.now()
             self.model.fit(self.x_train, self.y_train)
-            time_taken_in_s: int = (datetime.datetime.now() - now).seconds
+            time_taken_in_s: int = (datetime.datetime.now() - start_refit).seconds
             self.score['time_taken_1_fold_fit_in_s'] = time_taken_in_s
 
             # get predictions
             self.y_test_pred = self.model.predict(self.x_test)
 
             for k, v in self.scoring_metrics_keras_scorers.items():
-                self.score['test'][k + '_1_fold_fit'] = round(v['scorer'](y_true=self.y_test,
+                self.score['test'][k + '_1_fold'] = round(v['scorer'](y_true=self.y_test,
                                                                           y_pred=self.y_test_pred,
                                                                           **v['kwargs']), self.score_dp)
 
-            self.score['test']['best_score_1_fold_fit'] = \
-                self.score['test'][score_criteria_for_best_model_fit + '_1_fold_fit']
-
-            try:
-                self.y_test_pred_proba = self.model.predict_proba(self.x_test)
-            except:
-                self.y_test_pred_proba = None
-
-            self.confusion_matrix: np.ndarray = make_confusion_matrix(y_true=self.y_test, y_pred=self.y_test_pred,
-                                                                      labels=self.labels)
-
-            logger.info('Training with {} done. Fit time: {}s.'.format(self.model_name,
-                                                                       self.fit_time_total_s))
+            self.score['best_score_1_fold'] = self.score['test'][score_criteria_for_best_model_fit + '_1_fold']
 
         else:
 
-            self.score['time_taken_k_fold_gridsearch_fit_in_s'] = None
-            self.score['best_parameters_from_gridsearch'] = None
-            self.score['parameters_combinations_searched'] = None
-
-            self.score['best_score_criteria'] = score_criteria_for_best_model_fit
-
             self.model = model_class(**model_parameters)
 
-            i = 0
-            for train_index, test_index in sss.split(self.x_dim2, self.y_dim1):
+            self.score['model_parameters'] = {k: v for k, v in model_parameters.items() if k != 'n_jobs'}
+            self.score['parameters_combinations_searched'] = None
+
+            all_fold_scores = []
+            # we reverse so that the last spit is the first one and self.x_test, self.y_test are same as step above
+            for train_index, test_index in reversed(list(sss.split(self.x_dim2, self.y_dim1))):
                 self.x_train, self.x_test = self.x_dim2[train_index], self.x_dim2[test_index]
                 self.y_train, self.y_test = self.y_dim1[train_index], self.y_dim1[test_index]
 
-                self.model.fit(self.x_train, self.y_train)
+                single_fold_score = {'test': {}, 'train': {}}
 
-                if i == 0:
-                    # save 1 fold info for first interaction
-                    pass
+                fit_start = datetime.datetime.now()
+                self.model.fit(self.x_dim2, self.y_dim1)
+                single_fold_score['time_taken'] = (datetime.datetime.now() - fit_start).microseconds
 
-                i += 1
+                # get predictions
+                self.y_test_pred = self.model.predict(self.x_test)
 
+                for k, v in self.scoring_metrics_keras_scorers.items():
+                    single_fold_score['test'][k] = round(v['scorer'](y_true=self.y_test,
+                                                                     y_pred=self.y_test_pred,
+                                                                     **v['kwargs']), self.score_dp)
 
-            # todo: do similar to gridsearch but by hand
-            # let's parse score for best model, mean means mean of k-folds
-            for j in ['train', 'test']:
-                set_score = {}
-                for k in self.scoring_metrics_keras_scorers.keys():
-                    set_score[k + '_k_fold_mean'] = \
-                        round(float(gridsearch_results['mean_' + j + '_' + k][best_estimator_index]), self.score_dp)
-                    set_score[k + '_k_fold_std'] = \
-                        round(float(gridsearch_results['std_' + j + '_' + k][best_estimator_index]), self.score_dp)
-                self.score[j] = set_score
+                # get predictions
+                self.y_train_pred = self.model.predict(self.x_train)
 
-            self.score['test']['best_score_k_fold_mean'] = \
-                self.score['test'][score_criteria_for_best_model_fit + '_k_fold_mean']
-            self.score['test']['best_score_k_fold_std'] = \
-                self.score['test'][score_criteria_for_best_model_fit + '_k_fold_std']
-            self.score['time_taken_k_fold_fit_in_s'] = None
-            self.score['time_taken_1_fold_fit_in_s'] = None
+                for k, v in self.scoring_metrics_keras_scorers.items():
+                    single_fold_score['train'][k] = round(v['scorer'](y_true=self.y_train,
+                                                                      y_pred=self.y_train_pred,
+                                                                      **v['kwargs']), self.score_dp)
 
-            raise Exception('coming soon')
+                all_fold_scores.append(single_fold_score)
+
+            self.score['time_taken_total_fit_in_s'] = round(sum([k['time_taken'] for k in all_fold_scores]) / 1000000)
+            self.score['time_taken_1_fold_fit_in_s'] = round(all_fold_scores[-1]['time_taken'] / 1000000)
+
+            for j in all_fold_scores:
+                j.pop('time_taken')
+
+            self.score['test'] = {}
+            self.score['train'] = {}
+
+            for tt in all_fold_scores[-1].keys():
+                for key in all_fold_scores[-1]['test'].keys():
+                    self.score[tt][key + '_k_fold_mean'] = \
+                        round(float(np.mean([k[tt][key] for k in all_fold_scores])), self.score_dp)
+                    self.score[tt][key + '_k_fold_std'] = \
+                        round(float(np.std([k[tt][key] for k in all_fold_scores])), self.score_dp)
+
+            self.score['best_score_k_fold_mean'] = \
+                round(float(np.mean([k['test'][score_criteria_for_best_model_fit] for k in all_fold_scores])), self.score_dp)
+            self.score['best_score_k_fold_std'] = \
+                round(float(np.std([k['test'][score_criteria_for_best_model_fit] for k in all_fold_scores])), self.score_dp)
+            for key in all_fold_scores[-1]['test'].keys():
+                self.score['test'][key + '_1_fold'] = all_fold_scores[-1]['test'][key]
+            self.score['best_score_1_fold'] = all_fold_scores[-1]['test'][score_criteria_for_best_model_fit]
+
+        # calculate probabilities and confusion matrix if pos
+        try:
+            self.y_test_pred_proba = self.model.predict_proba(self.x_test)
+        except:
+            self.y_test_pred_proba = None
+
+        self.confusion_matrix: np.ndarray = make_confusion_matrix(y_true=self.y_test, y_pred=self.y_test_pred,
+                                                                  labels=self.labels)
+
+        logger.info('Training with {} done. Fit time: {}s.'.format(self.model_name,
+                                                                   self.score['time_taken_total_fit_in_s']))
 
         self._calculate_report_for_model_keras()
 
@@ -576,8 +593,7 @@ class ClassificationTask:
 
         report = self.score
 
-        for i in ['k_folds',
-                  'n_classes',
+        for i in ['n_classes',
                   'classification_type',
                   'model_name',
                   ]:
@@ -792,8 +808,6 @@ class ClassificationTask:
 
     def _init_training(self):
         self._init_scoring()
-        self.fit_time_total_s = None
-        self.fit_time_best_model_k_folds_s = None
         self.score = {}
         self.model = None
         self.model_name = None

@@ -6,9 +6,33 @@ from wrapml.learn.supervised.classification import ClassificationTask
 from wrapml import DataGenerator
 
 
-class TestImageGrayScaleClassificationTask(TestCase):
+class TestClassificationTask(TestCase):
 
     dg = DataGenerator(n_classes=3,
+                       x_shape=(100, 10))
+    x, y = dg.xy()
+
+    ct = ClassificationTask(x=x, y=y)
+
+    ct.k_folds = 2
+    ct.n_jobs = 1
+
+    def test_report_keys(self):
+
+        self.ct.train_with_xgboost(do_grid_search=True, k_folds=1)
+        score_with_grid_search = self.ct.score
+
+        self.ct.train_with_xgboost(do_grid_search=False, k_folds=3)
+        score_without_grid_search = self.ct.score
+
+        self.assertEqual(score_without_grid_search.keys(), score_with_grid_search.keys())
+        self.assertEqual(score_without_grid_search['test'].keys(), score_with_grid_search['test'].keys())
+        self.assertEqual(score_without_grid_search['train'].keys(), score_with_grid_search['train'].keys())
+
+
+class TestImageGrayScaleClassificationTask(TestCase):
+
+    dg = DataGenerator(n_classes=10,
                        x_shape=(100, 40, 40, 1))
     x, y = dg.xy()
 
@@ -19,10 +43,10 @@ class TestImageGrayScaleClassificationTask(TestCase):
 
     def test_knn(self):
 
-        self.ct.train_with_knn()
+        self.ct.train_with_knn(do_grid_search=False)
         score = self.ct.score
-        accuracy = round(score['test']['accuracy_score'], 2)
-        self.assertEqual(0.94, accuracy)
+        accuracy = round(score['test']['accuracy_score_k_fold_mean'], 2)
+        self.assertEqual(0.97, accuracy)
         report = self.ct.report
         small_report = self.ct.small_report
         self.ct.make_confusion_plot()
@@ -30,9 +54,9 @@ class TestImageGrayScaleClassificationTask(TestCase):
 
     def test_random_forests(self):
 
-        self.ct.train_with_random_forests()
+        self.ct.train_with_random_forests(do_grid_search=False)
         score = self.ct.score
-        accuracy = round(score['test']['accuracy_score'], 2)
+        accuracy = round(score['test']['accuracy_score_k_fold_mean'], 2)
         self.assertEqual(0.69, accuracy)
         report = self.ct.report
         small_report = self.ct.small_report
@@ -41,7 +65,7 @@ class TestImageGrayScaleClassificationTask(TestCase):
 
     def test_xgboost(self):
 
-        self.ct.train_with_xgboost(do_grid_search=True)
+        self.ct.train_with_xgboost(do_grid_search=True, k_folds=3)
         score = self.ct.score
         accuracy = round(score['test']['accuracy_score_k_fold_mean'], 2)
         self.assertEqual(0.63, accuracy)

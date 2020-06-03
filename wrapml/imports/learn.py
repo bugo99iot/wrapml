@@ -2,22 +2,24 @@ from wrapml.imports.vanilla import logger
 
 # ML
 
+import pickle
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder, RobustScaler, MinMaxScaler
-from sklearn.neighbors import KNeighborsClassifier
-import pickle
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score, make_scorer, \
     roc_auc_score, roc_curve, auc, matthews_corrcoef, cohen_kappa_score, zero_one_loss, plot_roc_curve
 from sklearn.metrics import confusion_matrix
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
-from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from xgboost import XGBClassifier
 
+from sklearn.model_selection import GridSearchCV
+
 # some models don't support parallel jobs
-MODEL_CLASSES_NOT_SUPPORTING_PARALLEL_JOBS = [SVC, AdaBoostClassifier]
+MODEL_CLASSES_NOT_SUPPORTING_PARALLEL_JOBS = [SVC, AdaBoostClassifier, KNeighborsClassifier]
+MODEL_CLASSES_NOT_SUPPORTING_RANDOM_STATE = [KNeighborsClassifier]
 
 # NN
 
