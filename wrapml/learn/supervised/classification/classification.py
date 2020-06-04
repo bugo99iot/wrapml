@@ -706,6 +706,7 @@ class ClassificationTask:
                                epochs: Optional[int],
                                callbacks: Optional[List],
                                batch_size: Optional[int],
+                               k_folds: int = 1,
                                do_grid_search: bool = False,
                                grid_search_parameters: Optional[Dict] = None,
                                score_criteria_for_best_model_fit: Optional[str] = None
@@ -724,7 +725,7 @@ class ClassificationTask:
             metrics=[self.scoring_metrics_tensorflow[k] for k in self.scoring_metrics_tensorflow_ordered]
         )
 
-        sss = StratifiedShuffleSplit(n_splits=self.k_folds,
+        sss = StratifiedShuffleSplit(n_splits=k_folds,
                                      test_size=self.test_size,
                                      random_state=self.random_state)
 
